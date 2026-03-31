@@ -1,0 +1,4 @@
+node_modules/
+src/_shims/_generated_stubs/
+*.log
+.env
