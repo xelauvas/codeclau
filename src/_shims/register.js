@@ -33,6 +33,14 @@ const cjsTranspile = (module, filename) => {
 Module._extensions['.ts'] = cjsTranspile;
 Module._extensions['.tsx'] = cjsTranspile;
 
+// Register .txt and .md handlers for CJS require (Bun text loader equivalent)
+const cjsTextLoader = (module, filename) => {
+  const text = readFileSync(filename, 'utf-8');
+  module.exports = text;
+};
+Module._extensions['.txt'] = cjsTextLoader;
+Module._extensions['.md'] = cjsTextLoader;
+
 // Patch Module._resolveFilename to handle bun:bundle and .js → .ts resolution
 const origResolve = Module._resolveFilename;
 const BUN_BUNDLE_PATH = resolve(dirname(fileURLToPath(import.meta.url)), 'bun_bundle.js');
