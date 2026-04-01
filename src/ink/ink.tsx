@@ -209,7 +209,8 @@ export default class Ink {
     // a one-keystroke lag. Same event-loop tick, so throughput is unchanged.
     // Test env uses onImmediateRender (direct onRender, no throttle) so
     // existing synchronous lastFrame() tests are unaffected.
-    const deferredRender = (): void => queueMicrotask(this.onRender);
+    const boundOnRender = this.onRender.bind(this);
+    const deferredRender = (): void => queueMicrotask(boundOnRender);
     this.scheduleRender = throttle(deferredRender, FRAME_INTERVAL_MS, {
       leading: true,
       trailing: true
@@ -235,7 +236,7 @@ export default class Ink {
     this.rootNode.focusManager = this.focusManager;
     this.renderer = createRenderer(this.rootNode, this.stylePool);
     this.rootNode.onRender = this.scheduleRender;
-    this.rootNode.onImmediateRender = this.onRender;
+    this.rootNode.onImmediateRender = boundOnRender;
     this.rootNode.onComputeLayout = () => {
       // Calculate layout during React's commit phase so useLayoutEffect hooks
       // have access to fresh layout data

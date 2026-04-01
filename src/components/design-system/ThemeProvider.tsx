@@ -32,7 +32,11 @@ type Props = {
   onThemeSave?: (setting: ThemeSetting) => void;
 };
 function defaultInitialTheme(): ThemeSetting {
-  return getGlobalConfig().theme;
+  try {
+    return getGlobalConfig().theme || 'dark';
+  } catch {
+    return 'dark';
+  }
 }
 function defaultSaveTheme(setting: ThemeSetting): void {
   saveGlobalConfig(current => ({
