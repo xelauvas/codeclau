@@ -1,10 +1,26 @@
 {
-  "name": "claude-code-openai",
+  "name": "xela-cli",
   "version": "0.1.0",
-  "private": true,
+  "description": "Xela — AI coding assistant powered by any model (OpenRouter, Groq, Ollama, DeepSeek, OpenAI)",
+  "author": "xelauvas",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xelauvas/codeclau.git"
+  },
+  "keywords": ["ai", "coding", "assistant", "cli", "openrouter", "groq", "ollama", "deepseek", "xela"],
+  "bin": {
+    "xela": "./bin/xela"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "start.js"
+  ],
   "scripts": {
-    "start": "node --import ./src/_shims/register.js ./src/entrypoints/cli.tsx"
+    "start": "node --import ./src/_shims/register.js ./src/entrypoints/cli.tsx",
+    "postinstall": "echo '\\n  Xela installed! Run: xela\\n  Config: ~/.xela/config\\n'"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.3.0",
@@ -28,6 +44,7 @@
     "chalk": "^5.4.1",
     "chokidar": "^4.0.3",
     "cli-boxes": "^4.0.1",
+    "cli-highlight": "^2.1.11",
     "code-excerpt": "^4.0.0",
     "commander": "^12.1.0",
     "diff": "^7.0.0",

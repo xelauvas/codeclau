@@ -34,6 +34,10 @@ export type ModelName = string
 export type ModelSetting = ModelName | ModelAlias | null
 
 export function getSmallFastModel(): ModelName {
+  // When using OpenAI backend, always use the configured model
+  if (process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_MODEL || 'gpt-4o'
+  }
   return process.env.ANTHROPIC_SMALL_FAST_MODEL || getDefaultHaikuModel()
 }
 
@@ -102,6 +106,9 @@ export function getMainLoopModel(): ModelName {
 }
 
 export function getBestModel(): ModelName {
+  if (process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_MODEL || 'gpt-4o'
+  }
   return getDefaultOpusModel()
 }
 
@@ -152,6 +159,11 @@ export function getRuntimeMainLoopModel(params: {
   exceeds200kTokens?: boolean
 }): ModelName {
   const { permissionMode, mainLoopModel, exceeds200kTokens = false } = params
+
+  // When using OpenAI backend, always use the configured model
+  if (process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_MODEL || 'gpt-4o'
+  }
 
   // opusplan uses Opus in plan mode without [1m] suffix.
   if (

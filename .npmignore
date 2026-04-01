@@ -1,0 +1,8 @@
+node_modules/
+.git/
+install.sh
+uninstall.sh
+chat.sh
+run.sh
+readmeprovider.md
+*.md

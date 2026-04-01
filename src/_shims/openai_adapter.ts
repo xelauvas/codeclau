@@ -20,7 +20,7 @@
  *   OPENAI_API_KEY=sk-or-... OPENAI_MODEL=google/gemini-2.0-flash-001
  *
  *   # Moonshot/Kimi (cheap)
- *   OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.moonshot.cn/v1 OPENAI_MODEL=moonshot-v1-8k
+ *   OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.moonshot.ai/v1 OPENAI_MODEL=moonshot-v1-32k
  *
  *   # DeepSeek (very cheap)
  *   OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.deepseek.com OPENAI_MODEL=deepseek-chat
@@ -46,7 +46,7 @@ function detectProvider(): { baseURL?: string; model: string; maxTokens: number 
   if (baseURL) {
     if (baseURL.includes('groq.com')) return { baseURL, model: model || 'llama-3.3-70b-versatile', maxTokens: 8192 }
     if (baseURL.includes('openrouter.ai')) return { baseURL, model: model || 'google/gemini-2.0-flash-001', maxTokens: 8192 }
-    if (baseURL.includes('moonshot.cn')) return { baseURL, model: model || 'moonshot-v1-8k', maxTokens: 4096 }
+    if (baseURL.includes('moonshot.cn') || baseURL.includes('moonshot.ai')) return { baseURL, model: model || 'moonshot-v1-32k', maxTokens: 4096 }
     if (baseURL.includes('deepseek.com')) return { baseURL, model: model || 'deepseek-chat', maxTokens: 8192 }
     if (baseURL.includes('localhost') || baseURL.includes('127.0.0.1')) return { baseURL, model: model || 'llama3.2', maxTokens: 4096 }
     if (baseURL.includes('mistral.ai')) return { baseURL, model: model || 'mistral-large-latest', maxTokens: 8192 }
@@ -187,7 +187,8 @@ function mapStopReason(finishReason: string | null): string {
 // Create a streaming response that mimics Anthropic's stream format
 async function* createAnthropicStyleStream(params: any, signal?: AbortSignal): AsyncGenerator<any> {
   const openai = getOpenAI()
-  const model = params.model?.includes('claude') ? MODEL : (params.model || MODEL)
+  // Always use the configured MODEL — internal Claude model names don't exist on OpenAI-compatible providers
+  const model = MODEL
 
   const openaiMessages: any[] = []
 
@@ -396,7 +397,8 @@ export function createOpenAIBackedAnthropicClient(): any {
       // Non-streaming: wrap in async IIFE
       const nonStreamingResult = (async () => {
       const openai = getOpenAI()
-      const model = params.model?.includes('claude') ? MODEL : (params.model || MODEL)
+      // Always use the configured MODEL
+      const model = MODEL
 
       const openaiMessages: any[] = []
       if (params.system) {
