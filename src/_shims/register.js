@@ -41,7 +41,7 @@ const REACT_COMPILER_PATH = resolve(dirname(fileURLToPath(import.meta.url)), 're
 Module._resolveFilename = function(request, parent, isMain, options) {
   // Intercept bun:bundle for CJS
   if (request === 'bun:bundle') return BUN_BUNDLE_PATH;
-  if (request === 'react/compiler-runtime') return REACT_COMPILER_PATH;
+  // react/compiler-runtime is provided natively by React 19
 
   // Handle src/ prefixed imports in CJS
   if (request.startsWith('src/')) {

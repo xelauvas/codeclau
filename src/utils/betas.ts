@@ -213,6 +213,10 @@ export function getToolSearchBetaHeader(): string {
  * and may not be supported by proxies or other providers.
  */
 export function shouldIncludeFirstPartyOnlyBetas(): boolean {
+  // OpenAI backend does not support Anthropic beta features
+  if (process.env.OPENAI_API_KEY) {
+    return false
+  }
   return (
     (getAPIProvider() === 'firstParty' || getAPIProvider() === 'foundry') &&
     !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)

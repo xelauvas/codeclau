@@ -4,6 +4,12 @@ import { isEnvTruthy } from '../envUtils.js'
 export type APIProvider = 'firstParty' | 'bedrock' | 'vertex' | 'foundry'
 
 export function getAPIProvider(): APIProvider {
+  // When using OpenAI backend, report as non-firstParty to skip
+  // Anthropic-specific codepaths (1P betas, global cache scope,
+  // off-switch checks, etc.)
+  if (process.env.OPENAI_API_KEY) {
+    return 'foundry'
+  }
   return isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)
     ? 'bedrock'
     : isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX)

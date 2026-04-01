@@ -90,6 +90,10 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
  * @returns The resolved model name to use
  */
 export function getMainLoopModel(): ModelName {
+  // When using OpenAI backend, return the OpenAI model name directly
+  if (process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_MODEL || 'gpt-4o'
+  }
   const model = getUserSpecifiedModelSetting()
   if (model !== undefined && model !== null) {
     return parseUserSpecifiedModel(model)

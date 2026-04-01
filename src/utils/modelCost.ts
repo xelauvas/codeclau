@@ -175,6 +175,10 @@ function trackUnknownModelCost(model: string, shortName: ModelShortName): void {
 // Calculate the cost of a query in US dollars.
 // If the model's costs are not found, use the default model's costs.
 export function calculateUSDCost(resolvedModel: string, usage: Usage): number {
+  // OpenAI pricing is not tracked here; return 0 to avoid false cost reports.
+  if (process.env.OPENAI_API_KEY) {
+    return 0
+  }
   const modelCosts = getModelCosts(resolvedModel, usage)
   return tokensToUSDCost(modelCosts, usage)
 }

@@ -239,9 +239,7 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier === 'bun:bundle') {
     return { url: BUN_BUNDLE_URL, shortCircuit: true };
   }
-  if (specifier === 'react/compiler-runtime') {
-    return { url: REACT_COMPILER_URL, shortCircuit: true };
-  }
+  // react/compiler-runtime is provided natively by React 19 — don't intercept
 
   // Handle src/ prefixed imports
   if (specifier.startsWith('src/')) {
@@ -331,6 +329,23 @@ const require = __createRequire(import.meta.url);
     }
 
     return { format: 'module', source: code, shortCircuit: true };
+  }
+
+  // For .js files: try default loader first, but if it fails on `with` syntax
+  // (import attributes), strip the `with { ... }` clauses and return as module
+  if (url.endsWith('.js') || url.endsWith('.mjs')) {
+    try {
+      return nextLoad(url, context);
+    } catch (err) {
+      if (err?.message?.includes('Unexpected token') && err?.message?.includes('with')) {
+        const filePath = fileURLToPath(url);
+        let source = readFileSync(filePath, 'utf-8');
+        // Strip `with { type: 'json' }` and similar import attributes
+        source = source.replace(/\swith\s*\{[^}]*\}/g, '');
+        return { format: 'module', source, shortCircuit: true };
+      }
+      throw err;
+    }
   }
 
   return nextLoad(url, context);

@@ -270,6 +270,10 @@ type JsonArray = JsonValue[]
  * @returns A JSON object representing the extra body parameters.
  */
 export function getExtraBodyParams(betaHeaders?: string[]): JsonObject {
+  // Skip Anthropic-specific extra body params when using OpenAI backend
+  if (process.env.OPENAI_API_KEY) {
+    return {}
+  }
   // Parse user's extra body parameters first
   const extraBodyStr = process.env.CLAUDE_CODE_EXTRA_BODY
   let result: JsonObject = {}
@@ -501,6 +505,10 @@ export function configureTaskBudgetParams(
 }
 
 export function getAPIMetadata() {
+  // Skip Anthropic-specific metadata when using OpenAI backend
+  if (process.env.OPENAI_API_KEY) {
+    return { user_id: '' }
+  }
   // https://docs.google.com/document/d/1dURO9ycXXQCBS0V4Vhl4poDBRgkelFc5t2BNPoEgH5Q/edit?tab=t.0#heading=h.5g7nec5b09w5
   let extra: JsonObject = {}
   const extraStr = process.env.CLAUDE_CODE_EXTRA_METADATA
@@ -531,6 +539,10 @@ export async function verifyApiKey(
   apiKey: string,
   isNonInteractiveSession: boolean,
 ): Promise<boolean> {
+  // Skip API verification when using OpenAI backend
+  if (process.env.OPENAI_API_KEY) {
+    return true
+  }
   // Skip API verification if running in print mode (isNonInteractiveSession)
   if (isNonInteractiveSession) {
     return true
@@ -1028,7 +1040,9 @@ async function* queryModel(
   // Check cheap conditions first — the off-switch await blocks on GrowthBook
   // init (~10ms). For non-Opus models (haiku, sonnet) this skips the await
   // entirely. Subscribers don't hit this path at all.
+  // Skip entirely for OpenAI backend — no Anthropic off-switch applies.
   if (
+    !process.env.OPENAI_API_KEY &&
     !isClaudeAISubscriber() &&
     isNonCustomOpusModel(options.model) &&
     (
