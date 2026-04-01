@@ -40,6 +40,7 @@ const bootstrapResponseSchema = lazySchema(() =>
 type BootstrapResponse = z.infer<ReturnType<typeof bootstrapResponseSchema>>
 
 async function fetchBootstrapAPI(): Promise<BootstrapResponse | null> {
+  if (process.env.OPENAI_API_KEY) return null;
   if (isEssentialTrafficOnly()) {
     logForDebugging('[Bootstrap] Skipped: Nonessential traffic disabled')
     return null

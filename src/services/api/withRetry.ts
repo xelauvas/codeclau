@@ -770,7 +770,11 @@ function shouldRetry(error: APIError): boolean {
 
   // Clear API key cache on 401 and allow retry.
   // OAuth token handling is done in the main retry loop via handleOAuth401Error.
+  // When using OpenAI, 401 means invalid key — don't retry.
   if (error.status === 401) {
+    if (process.env.OPENAI_API_KEY) {
+      return false
+    }
     clearApiKeyHelperCache()
     return true
   }

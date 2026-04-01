@@ -153,7 +153,7 @@ async function* createAnthropicStyleStream(params: any, signal?: AbortSignal): A
     model,
     messages: openaiMessages,
     stream: true,
-    max_completion_tokens: params.max_tokens || 8192,
+    max_completion_tokens: Math.min(params.max_tokens || 8192, 16384),
   }
 
   if (tools.length > 0) {
@@ -164,7 +164,15 @@ async function* createAnthropicStyleStream(params: any, signal?: AbortSignal): A
     requestParams.temperature = params.temperature
   }
 
-  const stream = await openai.chat.completions.create(requestParams, { signal })
+  let stream: any
+  try {
+    stream = await openai.chat.completions.create(requestParams, { signal })
+  } catch (err: any) {
+    // Re-throw as Anthropic APIError so retry logic works
+    const { APIError } = await import('@anthropic-ai/sdk')
+    const status = err?.status || 500
+    throw new APIError(status, err?.error || {}, err?.message || 'OpenAI API error', new Headers())
+  }
 
   // Emit message_start
   const messageId = `msg_${Date.now()}`
@@ -178,7 +186,21 @@ async function* createAnthropicStyleStream(params: any, signal?: AbortSignal): A
       model,
       stop_reason: null,
       stop_sequence: null,
-      usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+      usage: {
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+        server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 },
+        service_tier: 'standard',
+        cache_creation: {
+          ephemeral_1h_input_tokens: 0,
+          ephemeral_5m_input_tokens: 0,
+        },
+        inference_geo: '',
+        iterations: [],
+        speed: 'standard',
+      },
     },
   }
 
@@ -243,7 +265,7 @@ async function* createAnthropicStyleStream(params: any, signal?: AbortSignal): A
               type: 'tool_use',
               id: tc.id,
               name: currentToolName,
-              input: {},
+              input: "",
             },
           }
         }
@@ -331,12 +353,19 @@ export function createOpenAIBackedAnthropicClient(): any {
       const requestParams: any = {
         model,
         messages: openaiMessages,
-        max_completion_tokens: params.max_tokens || 8192,
+        max_completion_tokens: Math.min(params.max_tokens || 8192, 16384),
       }
       if (tools.length > 0) requestParams.tools = tools
       if (params.temperature !== undefined) requestParams.temperature = params.temperature
 
-      const response = await openai.chat.completions.create(requestParams, { signal: options?.signal })
+      let response: any
+      try {
+        response = await openai.chat.completions.create(requestParams, { signal: options?.signal })
+      } catch (err: any) {
+        const { APIError } = await import('@anthropic-ai/sdk')
+        const status = err?.status || 500
+        throw new APIError(status, err?.error || {}, err?.message || 'OpenAI API error', new Headers())
+      }
       const choice = response.choices[0]
 
       // Convert to Anthropic format
@@ -370,6 +399,15 @@ export function createOpenAIBackedAnthropicClient(): any {
           output_tokens: response.usage?.completion_tokens || 0,
           cache_creation_input_tokens: 0,
           cache_read_input_tokens: 0,
+          server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 },
+          service_tier: 'standard',
+          cache_creation: {
+            ephemeral_1h_input_tokens: 0,
+            ephemeral_5m_input_tokens: 0,
+          },
+          inference_geo: '',
+          iterations: [],
+          speed: 'standard',
         },
       }
       })(); // end async IIFE

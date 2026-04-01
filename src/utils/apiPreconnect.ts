@@ -29,6 +29,7 @@ import { isEnvTruthy } from './envUtils.js'
 let fired = false
 
 export function preconnectAnthropicApi(): void {
+  if (process.env.OPENAI_API_KEY) return;
   if (fired) return
   fired = true
 

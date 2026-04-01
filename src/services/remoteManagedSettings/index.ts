@@ -142,6 +142,7 @@ export function computeChecksumFromSettings(settings: SettingsJson): string {
  * Used to determine if they should wait for remote settings to load
  */
 export function isEligibleForRemoteManagedSettings(): boolean {
+  if (process.env.OPENAI_API_KEY) return false;
   return isRemoteManagedSettingsEligible()
 }
 

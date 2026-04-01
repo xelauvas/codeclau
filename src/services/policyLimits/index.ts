@@ -165,6 +165,7 @@ function computeChecksum(
  * getSettings() to avoid circular dependencies during settings loading.
  */
 export function isPolicyLimitsEligible(): boolean {
+  if (process.env.OPENAI_API_KEY) return false;
   // 3p provider users should not hit the policy limits endpoint
   if (getAPIProvider() !== 'firstParty') {
     return false

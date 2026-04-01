@@ -621,6 +621,7 @@ const getGrowthBookClient = memoize(
  */
 export const initializeGrowthBook = memoize(
   async (): Promise<GrowthBook | null> => {
+    if (process.env.OPENAI_API_KEY) return null;
     let clientWrapper = getGrowthBookClient()
     if (!clientWrapper) {
       return null
@@ -1137,6 +1138,7 @@ export async function getDynamicConfig_BLOCKS_ON_INIT<T>(
   configName: string,
   defaultValue: T,
 ): Promise<T> {
+  if (process.env.OPENAI_API_KEY) return defaultValue;
   return getFeatureValue_DEPRECATED(configName, defaultValue)
 }
 
