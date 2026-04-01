@@ -1,14 +1,71 @@
 /**
- * OpenAI Adapter - Makes OpenAI API look like the Anthropic SDK.
+ * Multi-Provider Adapter - Makes any OpenAI-compatible API look like Anthropic SDK.
  *
- * Wraps OpenAI's chat completions API behind the same interface that
- * the rest of the app expects from @anthropic-ai/sdk.
+ * Supports: OpenAI, Groq, OpenRouter, Moonshot/Kimi, DeepSeek, Ollama, Mistral,
+ * Together AI, Fireworks, and any OpenAI-compatible endpoint.
  *
- * Set OPENAI_API_KEY env var and optionally OPENAI_MODEL (default: gpt-4o).
+ * Environment variables:
+ *   OPENAI_API_KEY    - API key (required)
+ *   OPENAI_BASE_URL   - Custom base URL (optional, auto-detected from key prefix)
+ *   OPENAI_MODEL      - Model name (optional, auto-detected from provider)
+ *
+ * Quick start examples:
+ *   # OpenAI (default)
+ *   OPENAI_API_KEY=sk-...
+ *
+ *   # Groq (free tier, fast)
+ *   OPENAI_API_KEY=gsk_... OPENAI_MODEL=llama-3.3-70b-versatile
+ *
+ *   # OpenRouter (many models, some free)
+ *   OPENAI_API_KEY=sk-or-... OPENAI_MODEL=google/gemini-2.0-flash-001
+ *
+ *   # Moonshot/Kimi (cheap)
+ *   OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.moonshot.cn/v1 OPENAI_MODEL=moonshot-v1-8k
+ *
+ *   # DeepSeek (very cheap)
+ *   OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.deepseek.com OPENAI_MODEL=deepseek-chat
+ *
+ *   # Ollama (local, free)
+ *   OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_MODEL=llama3.2
+ *
+ *   # Mistral
+ *   OPENAI_API_KEY=... OPENAI_BASE_URL=https://api.mistral.ai/v1 OPENAI_MODEL=mistral-large-latest
+ *
+ *   # Together AI
+ *   OPENAI_API_KEY=... OPENAI_BASE_URL=https://api.together.xyz/v1 OPENAI_MODEL=meta-llama/Llama-3.3-70B-Instruct-Turbo
  */
 import OpenAI from 'openai'
 
-const MODEL = process.env.OPENAI_MODEL || 'gpt-4o'
+// Auto-detect provider from API key prefix or base URL
+function detectProvider(): { baseURL?: string; model: string; maxTokens: number } {
+  const key = process.env.OPENAI_API_KEY || ''
+  const baseURL = process.env.OPENAI_BASE_URL
+  const model = process.env.OPENAI_MODEL
+
+  // Explicit base URL — user knows what they want
+  if (baseURL) {
+    if (baseURL.includes('groq.com')) return { baseURL, model: model || 'llama-3.3-70b-versatile', maxTokens: 8192 }
+    if (baseURL.includes('openrouter.ai')) return { baseURL, model: model || 'google/gemini-2.0-flash-001', maxTokens: 8192 }
+    if (baseURL.includes('moonshot.cn')) return { baseURL, model: model || 'moonshot-v1-8k', maxTokens: 4096 }
+    if (baseURL.includes('deepseek.com')) return { baseURL, model: model || 'deepseek-chat', maxTokens: 8192 }
+    if (baseURL.includes('localhost') || baseURL.includes('127.0.0.1')) return { baseURL, model: model || 'llama3.2', maxTokens: 4096 }
+    if (baseURL.includes('mistral.ai')) return { baseURL, model: model || 'mistral-large-latest', maxTokens: 8192 }
+    if (baseURL.includes('together.xyz')) return { baseURL, model: model || 'meta-llama/Llama-3.3-70B-Instruct-Turbo', maxTokens: 8192 }
+    if (baseURL.includes('fireworks.ai')) return { baseURL, model: model || 'accounts/fireworks/models/llama-v3p3-70b-instruct', maxTokens: 8192 }
+    return { baseURL, model: model || 'gpt-4o', maxTokens: 16384 }
+  }
+
+  // Auto-detect from key prefix
+  if (key.startsWith('gsk_')) return { baseURL: 'https://api.groq.com/openai/v1', model: model || 'llama-3.3-70b-versatile', maxTokens: 8192 }
+  if (key.startsWith('sk-or-')) return { baseURL: 'https://openrouter.ai/api/v1', model: model || 'google/gemini-2.0-flash-001', maxTokens: 8192 }
+
+  // Default: OpenAI
+  return { model: model || 'gpt-4o', maxTokens: 16384 }
+}
+
+const PROVIDER = detectProvider()
+const MODEL = PROVIDER.model
+const MAX_TOKENS = PROVIDER.maxTokens
 
 let _openaiClient: OpenAI | null = null
 
@@ -18,7 +75,10 @@ function getOpenAI(): OpenAI {
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY environment variable is required')
     }
-    _openaiClient = new OpenAI({ apiKey })
+    _openaiClient = new OpenAI({
+      apiKey,
+      ...(PROVIDER.baseURL ? { baseURL: PROVIDER.baseURL } : {}),
+    })
   }
   return _openaiClient
 }
@@ -153,7 +213,7 @@ async function* createAnthropicStyleStream(params: any, signal?: AbortSignal): A
     model,
     messages: openaiMessages,
     stream: true,
-    max_completion_tokens: Math.min(params.max_tokens || 8192, 16384),
+    max_completion_tokens: Math.min(params.max_tokens || 8192, MAX_TOKENS),
   }
 
   if (tools.length > 0) {
@@ -353,7 +413,7 @@ export function createOpenAIBackedAnthropicClient(): any {
       const requestParams: any = {
         model,
         messages: openaiMessages,
-        max_completion_tokens: Math.min(params.max_tokens || 8192, 16384),
+        max_completion_tokens: Math.min(params.max_tokens || 8192, MAX_TOKENS),
       }
       if (tools.length > 0) requestParams.tools = tools
       if (params.temperature !== undefined) requestParams.temperature = params.temperature
