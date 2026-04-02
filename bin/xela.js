@@ -108,5 +108,13 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-// Import and run the CLI
-await import(join(INSTALL_DIR, 'src', 'entrypoints', 'cli.tsx'));
+// Launch node with the TSX loader shim
+try {
+  execFileSync(process.execPath, [
+    '--import', join(INSTALL_DIR, 'src', '_shims', 'register.js'),
+    join(INSTALL_DIR, 'start.js'),
+    ...args,
+  ], { stdio: 'inherit', env: process.env });
+} catch (e) {
+  process.exit(e.status || 1);
+}
