@@ -12,13 +12,47 @@ const XELA_HOME = join(homedir(), '.xela');
 const XELA_CONFIG = join(XELA_HOME, 'config.json');
 
 const PROVIDERS = {
-  openrouter:  { baseUrl: 'https://openrouter.ai/api/v1',    model: 'qwen/qwen3.6-plus-preview:free' },
-  groq:        { baseUrl: 'https://api.groq.com/openai/v1',  model: 'qwen-qwq-32b' },
-  ollama:      { baseUrl: 'http://localhost:11434/v1',        model: 'qwen2.5-coder:7b' },
-  deepseek:    { baseUrl: 'https://api.deepseek.com',         model: 'deepseek-chat' },
-  openai:      { baseUrl: undefined,                          model: 'gpt-4o' },
-  cerebras:    { baseUrl: 'https://api.cerebras.ai/v1',       model: 'llama-3.3-70b' },
-  sambanova:   { baseUrl: 'https://api.sambanova.ai/v1',      model: 'Meta-Llama-3.3-70B-Instruct' },
+  openrouter: {
+    baseUrl: 'https://openrouter.ai/api/v1',
+    models: [
+      'qwen/qwen3.6-plus-preview:free',
+      'deepseek/deepseek-chat-v3-0324:free',
+      'google/gemini-2.5-pro-exp-03-25:free',
+      'meta-llama/llama-4-maverick:free',
+      'nvidia/llama-3.1-nemotron-ultra-253b:free',
+    ],
+    default: 'qwen/qwen3.6-plus-preview:free',
+  },
+  groq: {
+    baseUrl: 'https://api.groq.com/openai/v1',
+    models: ['qwen-qwq-32b', 'llama-3.3-70b-versatile', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
+    default: 'qwen-qwq-32b',
+  },
+  ollama: {
+    baseUrl: 'http://localhost:11434/v1',
+    models: ['qwen2.5-coder:7b', 'llama3.2:latest', 'codellama:latest', 'deepseek-coder-v2:latest'],
+    default: 'qwen2.5-coder:7b',
+  },
+  deepseek: {
+    baseUrl: 'https://api.deepseek.com',
+    models: ['deepseek-chat', 'deepseek-reasoner'],
+    default: 'deepseek-chat',
+  },
+  openai: {
+    baseUrl: undefined,
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'o4-mini'],
+    default: 'gpt-4o',
+  },
+  cerebras: {
+    baseUrl: 'https://api.cerebras.ai/v1',
+    models: ['llama-3.3-70b', 'llama-3.1-8b'],
+    default: 'llama-3.3-70b',
+  },
+  sambanova: {
+    baseUrl: 'https://api.sambanova.ai/v1',
+    models: ['Meta-Llama-3.3-70B-Instruct', 'DeepSeek-R1-Distill-Llama-70B'],
+    default: 'Meta-Llama-3.3-70B-Instruct',
+  },
 };
 
 function ask(question) {
@@ -60,10 +94,26 @@ async function setup() {
     }
   }
 
+  // Pick model
+  const providerInfo = PROVIDERS[provider];
+  const models = providerInfo.models;
+  console.log('');
+  console.log('  Models:');
+  models.forEach((m, i) => {
+    const tag = m === providerInfo.default ? ' (default)' : '';
+    console.log(`    ${i + 1}. ${m}${tag}`);
+  });
+  console.log('');
+  const modelChoice = await ask('  Pick a model [1]: ');
+  const modelIdx = (parseInt(modelChoice) || 1) - 1;
+  const model = models[Math.min(modelIdx, models.length - 1)];
+
   mkdirSync(XELA_HOME, { recursive: true });
-  const config = { provider, apiKey, model: '', baseUrl: '' };
+  const config = { provider, apiKey, model, baseUrl: '' };
   writeFileSync(XELA_CONFIG, JSON.stringify(config, null, 2));
   console.log('');
+  console.log(`  Provider: ${provider}`);
+  console.log(`  Model: ${model}`);
   console.log(`  Saved to ${XELA_CONFIG}`);
   console.log('  You can edit it anytime: nano ~/.xela/config.json');
   console.log('');
@@ -85,17 +135,17 @@ if (!existsSync(XELA_CONFIG)) {
 }
 
 const provider = config.provider || 'openrouter';
-const providerInfo = PROVIDERS[provider] || PROVIDERS.openrouter;
+const pInfo = PROVIDERS[provider] || PROVIDERS.openrouter;
 
 // Set env vars
 if (config.apiKey) {
   process.env.OPENAI_API_KEY = config.apiKey;
 }
 if (!process.env.OPENAI_BASE_URL) {
-  process.env.OPENAI_BASE_URL = config.baseUrl || providerInfo.baseUrl;
+  process.env.OPENAI_BASE_URL = config.baseUrl || pInfo.baseUrl;
 }
 if (!process.env.OPENAI_MODEL) {
-  process.env.OPENAI_MODEL = config.model || providerInfo.model || 'gpt-4o';
+  process.env.OPENAI_MODEL = config.model || pInfo.default || 'gpt-4o';
 }
 
 // Handle -m/--model flag
