@@ -192,6 +192,11 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
+  // OpenAI-compatible backend: use OPENAI_MODEL
+  if (process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_MODEL || 'gpt-4o'
+  }
+
   // Ants default to defaultModel from flag config, or Opus 1M if not configured
   if (process.env.USER_TYPE === 'ant') {
     return (
