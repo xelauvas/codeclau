@@ -12,7 +12,7 @@ AI coding assistant that works with **any model** — free or paid. Use OpenRout
 
 **npm (recommended):**
 ```bash
-npm install -g xela-cli
+npm install -g @xelauvas/xela-cli
 ```
 
 **One-liner:**
@@ -186,7 +186,7 @@ ollama pull deepseek-v3.2
 
 ```bash
 # npm install
-npm uninstall -g xela-cli
+npm uninstall -g @xelauvas/xela-cli
 
 # curl install
 curl -fsSL https://raw.githubusercontent.com/xelauvas/codeclau/main/uninstall.sh | bash
