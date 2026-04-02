@@ -165,6 +165,24 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
+// Show star prompt after first few uses
+const STAR_FILE = join(XELA_HOME, '.star-shown');
+const USAGE_FILE = join(XELA_HOME, '.usage-count');
+try {
+  let count = 0;
+  try { count = parseInt(readFileSync(USAGE_FILE, 'utf-8')) || 0; } catch {}
+  count++;
+  writeFileSync(USAGE_FILE, String(count));
+  if (count === 3 && !existsSync(STAR_FILE)) {
+    console.log('');
+    console.log('  \x1b[36m╲  ╳  ╱\x1b[0m  Enjoying Xela? Give it a star!');
+    console.log('  \x1b[36m╱  ╳  ╲\x1b[0m  \x1b[4mhttps://github.com/xelauvas/codeclau\x1b[0m');
+    console.log('  \x1b[36m  XELA \x1b[0m  It helps others discover it too.');
+    console.log('');
+    writeFileSync(STAR_FILE, '1');
+  }
+} catch {}
+
 // Launch node with the TSX loader shim
 try {
   execFileSync(process.execPath, [

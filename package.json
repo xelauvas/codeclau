@@ -1,6 +1,6 @@
 {
   "name": "@xelauvas/xela-cli",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Xela — AI coding assistant powered by any model (OpenRouter, Groq, Ollama, DeepSeek, OpenAI)",
   "author": "xelauvas",
   "license": "MIT",
@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "start": "node --import ./src/_shims/register.js ./src/entrypoints/cli.tsx",
-    "postinstall": "echo '\\n  Xela installed! Run: xela\\n  Config: ~/.xela/config\\n'"
+    "postinstall": "echo '\\n  \\x1b[36m╲  ╳  ╱\\x1b[0m  Xela installed!\\n  \\x1b[36m╱  ╳  ╲\\x1b[0m  Run: xela\\n  \\x1b[36m  XELA \\x1b[0m  Star: github.com/xelauvas/codeclau\\n'"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.3.0",

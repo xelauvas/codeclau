@@ -1,6 +1,10 @@
 # Xela CLI
 
-AI coding assistant that works with **any model** — free or paid. Use OpenRouter, Groq, Ollama, DeepSeek, OpenAI, and more. One tool, any brain.
+[![npm](https://img.shields.io/npm/v/@xelauvas/xela-cli)](https://www.npmjs.com/package/@xelauvas/xela-cli)
+[![GitHub stars](https://img.shields.io/github/stars/xelauvas/codeclau?style=social)](https://github.com/xelauvas/codeclau)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+**Free AI coding assistant for your terminal.** Works with any model — OpenRouter, Groq, Ollama, DeepSeek, OpenAI, and more. Like Cursor/Claude Code, but free and open source.
 
 ```
 ╲  ╳  ╱   Xela
