@@ -883,20 +883,39 @@ export const getMemoryFiles = memoize(
         pathInWorkingPath(dir, canonicalRoot) &&
         !pathInWorkingPath(dir, gitRoot)
 
-      // Try reading CLAUDE.md (Project) - only if projectSettings is enabled
+      // Try reading XELA.md or CLAUDE.md (Project) - only if projectSettings is enabled
       if (isSettingSourceEnabled('projectSettings') && !skipProject) {
-        const projectPath = join(dir, 'CLAUDE.md')
+        // Prefer XELA.md, fall back to CLAUDE.md for backwards compatibility
+        const xelaPath = join(dir, 'XELA.md')
+        const claudePath = join(dir, 'CLAUDE.md')
         result.push(
           ...(await processMemoryFile(
-            projectPath,
+            xelaPath,
+            'Project',
+            processedPaths,
+            includeExternal,
+          )),
+        )
+        result.push(
+          ...(await processMemoryFile(
+            claudePath,
             'Project',
             processedPaths,
             includeExternal,
           )),
         )
 
-        // Try reading .claude/CLAUDE.md (Project)
+        // Try reading .claude/XELA.md or .claude/CLAUDE.md (Project)
+        const dotXelaPath = join(dir, '.claude', 'XELA.md')
         const dotClaudePath = join(dir, '.claude', 'CLAUDE.md')
+        result.push(
+          ...(await processMemoryFile(
+            dotXelaPath,
+            'Project',
+            processedPaths,
+            includeExternal,
+          )),
+        )
         result.push(
           ...(await processMemoryFile(
             dotClaudePath,
@@ -919,8 +938,17 @@ export const getMemoryFiles = memoize(
         )
       }
 
-      // Try reading CLAUDE.local.md (Local) - only if localSettings is enabled
+      // Try reading XELA.local.md or CLAUDE.local.md (Local) - only if localSettings is enabled
       if (isSettingSourceEnabled('localSettings')) {
+        const xelaLocalPath = join(dir, 'XELA.local.md')
+        result.push(
+          ...(await processMemoryFile(
+            xelaLocalPath,
+            'Local',
+            processedPaths,
+            includeExternal,
+          )),
+        )
         const localPath = join(dir, 'CLAUDE.local.md')
         result.push(
           ...(await processMemoryFile(
@@ -940,7 +968,16 @@ export const getMemoryFiles = memoize(
     if (isEnvTruthy(process.env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD)) {
       const additionalDirs = getAdditionalDirectoriesForClaudeMd()
       for (const dir of additionalDirs) {
-        // Try reading CLAUDE.md from the additional directory
+        // Try reading XELA.md or CLAUDE.md from the additional directory
+        const xelaPath_add = join(dir, 'XELA.md')
+        result.push(
+          ...(await processMemoryFile(
+            xelaPath_add,
+            'Project',
+            processedPaths,
+            includeExternal,
+          )),
+        )
         const projectPath = join(dir, 'CLAUDE.md')
         result.push(
           ...(await processMemoryFile(
@@ -951,7 +988,16 @@ export const getMemoryFiles = memoize(
           )),
         )
 
-        // Try reading .claude/CLAUDE.md from the additional directory
+        // Try reading .claude/XELA.md or .claude/CLAUDE.md from the additional directory
+        const dotXelaPath_add = join(dir, '.claude', 'XELA.md')
+        result.push(
+          ...(await processMemoryFile(
+            dotXelaPath_add,
+            'Project',
+            processedPaths,
+            includeExternal,
+          )),
+        )
         const dotClaudePath = join(dir, '.claude', 'CLAUDE.md')
         result.push(
           ...(await processMemoryFile(
@@ -1253,30 +1299,34 @@ export async function getMemoryFilesForNestedDirectory(
 ): Promise<MemoryFileInfo[]> {
   const result: MemoryFileInfo[] = []
 
-  // Process project memory files (CLAUDE.md and .claude/CLAUDE.md)
+  // Process project memory files (XELA.md/CLAUDE.md and .claude/XELA.md/.claude/CLAUDE.md)
   if (isSettingSourceEnabled('projectSettings')) {
-    const projectPath = join(dir, 'CLAUDE.md')
-    result.push(
-      ...(await processMemoryFile(
-        projectPath,
-        'Project',
-        processedPaths,
-        false,
-      )),
-    )
-    const dotClaudePath = join(dir, '.claude', 'CLAUDE.md')
-    result.push(
-      ...(await processMemoryFile(
-        dotClaudePath,
-        'Project',
-        processedPaths,
-        false,
-      )),
-    )
+    for (const fname of ['XELA.md', 'CLAUDE.md']) {
+      result.push(
+        ...(await processMemoryFile(
+          join(dir, fname),
+          'Project',
+          processedPaths,
+          false,
+        )),
+      )
+      result.push(
+        ...(await processMemoryFile(
+          join(dir, '.claude', fname),
+          'Project',
+          processedPaths,
+          false,
+        )),
+      )
+    }
   }
 
-  // Process local memory file (CLAUDE.local.md)
+  // Process local memory file (XELA.local.md/CLAUDE.local.md)
   if (isSettingSourceEnabled('localSettings')) {
+    const xelaLocalPath = join(dir, 'XELA.local.md')
+    result.push(
+      ...(await processMemoryFile(xelaLocalPath, 'Local', processedPaths, false)),
+    )
     const localPath = join(dir, 'CLAUDE.local.md')
     result.push(
       ...(await processMemoryFile(localPath, 'Local', processedPaths, false)),
@@ -1435,8 +1485,8 @@ export async function shouldShowClaudeMdExternalIncludesWarning(): Promise<boole
 export function isMemoryFilePath(filePath: string): boolean {
   const name = basename(filePath)
 
-  // CLAUDE.md or CLAUDE.local.md anywhere
-  if (name === 'CLAUDE.md' || name === 'CLAUDE.local.md') {
+  // XELA.md, CLAUDE.md, XELA.local.md, or CLAUDE.local.md anywhere
+  if (name === 'XELA.md' || name === 'CLAUDE.md' || name === 'XELA.local.md' || name === 'CLAUDE.local.md') {
     return true
   }
 

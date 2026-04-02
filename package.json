@@ -1,6 +1,6 @@
 {
   "name": "@xelauvas/xela-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Xela — AI coding assistant powered by any model (OpenRouter, Groq, Ollama, DeepSeek, OpenAI)",
   "author": "xelauvas",
   "license": "MIT",
