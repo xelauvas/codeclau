@@ -103,10 +103,17 @@ async function setup() {
     const tag = m === providerInfo.default ? ' (default)' : '';
     console.log(`    ${i + 1}. ${m}${tag}`);
   });
+  console.log(`    ${models.length + 1}. custom (type any model ID)`);
   console.log('');
   const modelChoice = await ask('  Pick a model [1]: ');
-  const modelIdx = (parseInt(modelChoice) || 1) - 1;
-  const model = models[Math.min(modelIdx, models.length - 1)];
+  const modelNum = parseInt(modelChoice) || 1;
+  let model;
+  if (modelNum > models.length) {
+    model = await ask('  Model ID: ');
+    if (!model) model = providerInfo.default;
+  } else {
+    model = models[Math.min(modelNum - 1, models.length - 1)];
+  }
 
   mkdirSync(XELA_HOME, { recursive: true });
   const config = { provider, apiKey, model, baseUrl: '' };
