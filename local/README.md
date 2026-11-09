@@ -71,42 +71,25 @@ The server can be started by hand with `start-qwen.sh` (same directory as
 
 ## Using Xela from any computer (like Claude Code or Codex)
 
-The model server stays on the GPU machine; Xela on any other computer or
-network talks to it over the internet. Install once, enter the server address
-once, then just run `xela-local`.
+The model stays on the GPU machine; Xela Code on any other computer signs in with a
+XelaSphere account and talks to `https://api.xelasphere.com`, which forwards to that model.
 
-**On the GPU machine**, start the server with a key and expose it through a
-tunnel (no router or firewall changes needed; the key is the only protection,
-so keep it secret):
-
-```bash
-LLAMA_API_KEY=choose-a-secret CTX=65536 start-qwen.sh   # or let xela-local start it
-start-tunnel.sh                                          # ngrok (needs `ngrok config add-authtoken ...` once)
-```
-
-`start-tunnel.sh` prints the public https URL and checks that requests without
-the key are refused. The free ngrok URL changes on every restart; claim the
-free static domain in the ngrok dashboard (Domains) and run
-`NGROK_DOMAIN=yourname.ngrok-free.app start-tunnel.sh` to keep it fixed.
-
-Same network only? Skip the tunnel and use `http://<gpu-machine-ip>:8080`. If
-the server runs inside WSL, enable mirrored networking (Windows 11: add
-`networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig`, then
-`wsl --shutdown`) and allow port 8080 in the Windows firewall:
-
-```powershell
-New-NetFirewallHyperVRule -Name llama-8080 -DisplayName "llama-server 8080 (WSL)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 8080
-New-NetFirewallRule -DisplayName "llama-server 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
-```
-
-**On any other computer** (Node 20+ and bash/curl; no GPU, no model):
+**On any computer** (Node 20+ and bash/curl; no GPU, no model):
 
 ```bash
 npm install -g @xelauvas/xela-cli
-xela-local            # first run asks: Server URL, API key → saved in ~/.xela-local/server.env
+xela-local                 # first run: "Sign in with your XelaSphere account" opens the browser
+xela-local --login         # sign in again / switch account        xela-local --logout
+xela-local --whoami        # account, server and model in use
 ```
 
-Afterwards `xela-local` works in any directory. `xela-local --setup` changes
-the server; `xela-local --server URL --key KEY` sets it non-interactively.
-`XELA_SERVER_URL` / `LLAMA_API_KEY` in the environment override the saved
-values. The launcher never starts a server when the address is not localhost.
+The browser opens `https://xelasphere.com/cli/auth?code=XXXX-XXXX`; after you approve, the CLI
+receives an API key tied to your account (saved in `~/.xela-local/server.env`). The same account
+and the same model are used by the chat on xelasphere.com.
+
+**On the GPU machine** the server runs `start-qwen.sh` with a key, and `xela-link --daemon` keeps a
+reverse SSH tunnel to the XelaSphere server so `api.xelasphere.com` reaches it (details in the
+XelaSphere repo, `deploy/XELA-CODE-LINK.md`). Without an account you can still point the CLI at any
+llama-server directly: `xela-local --setup` (or `--server URL --key KEY`), optionally exposed with
+`xela-tunnel` (ngrok) or on the LAN (`http://<gpu-machine-ip>:8080`; in WSL enable mirrored
+networking and open port 8080 in the Windows firewall).

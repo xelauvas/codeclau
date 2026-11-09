@@ -1,6 +1,6 @@
 {
   "name": "@xelauvas/xela-cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Xela — AI coding assistant powered by any model (OpenRouter, Groq, Ollama, DeepSeek, OpenAI)",
   "author": "xelauvas",
   "license": "MIT",
@@ -23,7 +23,8 @@
   "bin": {
     "xela": "bin/xela.js",
     "xela-local": "local/xela-local.sh",
-    "xela-tunnel": "local/start-tunnel.sh"
+    "xela-tunnel": "local/start-tunnel.sh",
+    "xela-link": "local/start-link.sh"
   },
   "files": [
     "bin/",
