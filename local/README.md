@@ -68,3 +68,34 @@ The server can be started by hand with `start-qwen.sh` (same directory as
 - `/peers`, proactive mode (`/proactive on`), assistant mode (`xela-local --assistant`)
   and the other Claude Code features are enabled by default; see
   `src/_shims/bun_bundle.js` for the feature list (`XELA_FEATURES_DISABLE=NAME` to turn one off).
+
+## Using the model from another computer
+
+The model server can stay on the GPU machine; Xela on a laptop talks to it over
+the network.
+
+On the GPU machine, start the server with a key and keep it running:
+
+```bash
+LLAMA_API_KEY=choose-a-secret CTX=65536 start-qwen.sh      # or via xela-local once
+```
+
+If the server runs inside WSL, Windows must forward the port. Either enable
+mirrored networking (Windows 11: add `networkingMode=mirrored` under `[wsl2]`
+in `%UserProfile%\.wslconfig`, then `wsl --shutdown`) or, in an admin
+PowerShell, forward it by hand each time the WSL IP changes (`hostname -I` in WSL):
+
+```powershell
+netsh interface portproxy add v4tov4 listenport=8080 listenaddress=0.0.0.0 connectport=8080 connectaddress=<WSL-IP>
+netsh advfirewall firewall add rule name="llama-server 8080" dir=in action=allow protocol=TCP localport=8080
+```
+
+On the other computer (only Node and the npm package are needed, no GPU, no model):
+
+```bash
+npm install -g @xelauvas/xela-cli
+XELA_SERVER_URL=http://<gpu-machine-ip>:8080 LLAMA_API_KEY=choose-a-secret xela-local
+```
+
+Put the two variables in your shell profile to make it permanent. The launcher
+never starts a server when `XELA_SERVER_URL` points to another host.

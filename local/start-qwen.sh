@@ -9,6 +9,7 @@
 #   CTX               context length (default 131072); MTP is enabled automatically at <= 65536
 #   MTP=0|1           force speculative decoding on/off (both do not fit in 24 GB at 128k)
 #   PORT              default 8080
+#   LLAMA_API_KEY     if set, clients must send it as a Bearer token (use it when exposing the port)
 #
 # Modes on a 24 GB card:
 #   CTX=131072 (default)  no MTP   ~31 tok/s, large context, rare compactions
@@ -25,13 +26,15 @@ if [ -z "${MTP:-}" ]; then
 fi
 [ -x "$BIN" ] || { echo "llama-server not found at $BIN (set LLAMA_SERVER). See local/README.md." >&2; exit 1; }
 [ -f "$MODEL_FILE" ] || { echo "model not found: $MODEL_FILE (set XELA_MODELS_DIR / MODEL). See local/README.md." >&2; exit 1; }
+KEY=()
+[ -n "${LLAMA_API_KEY:-}" ] && KEY=(--api-key "$LLAMA_API_KEY")
 SPEC=()
 if [ "$MTP" = "1" ] && [ -f "$MTP_FILE" ]; then
   SPEC=(-md "$MTP_FILE" --spec-type draft-mtp)
 fi
 exec "$BIN" \
   -m "$MODEL_FILE" \
-  "${SPEC[@]}" \
+  "${SPEC[@]}" "${KEY[@]}" \
   --alias qwen3.6-27b \
   -ngl 99 \
   -c "$CTX" \
