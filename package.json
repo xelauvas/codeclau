@@ -1,6 +1,6 @@
 {
   "name": "@xelauvas/xela-cli",
-  "version": "0.2.3",
+  "version": "0.4.0",
   "description": "Xela — AI coding assistant powered by any model (OpenRouter, Groq, Ollama, DeepSeek, OpenAI)",
   "author": "xelauvas",
   "license": "MIT",
@@ -11,12 +11,15 @@
   },
   "keywords": ["ai", "coding", "assistant", "cli", "openrouter", "groq", "ollama", "deepseek", "xela"],
   "bin": {
-    "xela": "./bin/xela.js"
+    "xela": "./bin/xela.js",
+    "xela-local": "./local/xela-local.sh"
   },
   "files": [
     "bin/",
     "src/",
-    "start.js"
+    "start.js",
+    "local/",
+    "run.sh"
   ],
   "scripts": {
     "start": "node --import ./src/_shims/register.js ./src/entrypoints/cli.tsx",

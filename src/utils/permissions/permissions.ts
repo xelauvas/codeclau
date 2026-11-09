@@ -657,6 +657,31 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
 
       // Allowlisted tools are safe and don't need YOLO classification.
       // This uses the safe-tool allowlist to skip unnecessary classifier API calls.
+      // Read-only tool calls (Read, Grep, Glob, ListPeers, ...) cannot change
+      // anything, so a classifier round-trip buys nothing. On a local model
+      // that call costs several seconds per tool use.
+      let readOnlyCall = false
+      try {
+        readOnlyCall = tool.isReadOnly(tool.inputSchema.parse(input))
+      } catch {
+        readOnlyCall = false
+      }
+      if (readOnlyCall) {
+        const newDenialState = recordSuccess(denialState)
+        persistDenialState(context, newDenialState)
+        logForDebugging(
+          `Skipping auto mode classifier for ${tool.name}: read-only call`,
+        )
+        return {
+          behavior: 'allow',
+          updatedInput: input,
+          decisionReason: {
+            type: 'mode',
+            mode: 'auto',
+          },
+        }
+      }
+
       if (classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)) {
         const newDenialState = recordSuccess(denialState)
         persistDenialState(context, newDenialState)
