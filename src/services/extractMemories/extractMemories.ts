@@ -26,6 +26,7 @@ import {
   getAutoMemPath,
   isAutoMemoryEnabled,
   isAutoMemPath,
+  isExtractGateOpen,
 } from '../../memdir/paths.js'
 import type { Tool } from '../../Tool.js'
 import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
@@ -376,9 +377,17 @@ export function initExtractMemories(): void {
     // process already-committed work that should not be throttled.
     if (!isTrailingRun) {
       turnsSinceLastExtraction++
+      // Local backend: the extraction is a full model call on the same GPU
+      // as the conversation, so default to every 3 turns
+      // (CLAUDE_CODE_MEMORY_EXTRACT_EVERY overrides).
+      const localEvery = process.env.OPENAI_API_KEY
+        ? Math.max(1, Number(process.env.CLAUDE_CODE_MEMORY_EXTRACT_EVERY) || 3)
+        : null
       if (
         turnsSinceLastExtraction <
-        (getFeatureValue_CACHED_MAY_BE_STALE('tengu_bramble_lintel', null) ?? 1)
+        (localEvery ??
+          getFeatureValue_CACHED_MAY_BE_STALE('tengu_bramble_lintel', null) ??
+          1)
       ) {
         return
       }
@@ -533,7 +542,7 @@ export function initExtractMemories(): void {
       return
     }
 
-    if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', false)) {
+    if (!isExtractGateOpen()) {
       if (process.env.USER_TYPE === 'ant' && !hasLoggedGateFailure) {
         hasLoggedGateFailure = true
         logEvent('tengu_extract_memories_gate_disabled', {})

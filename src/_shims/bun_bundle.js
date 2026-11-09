@@ -65,6 +65,9 @@ const DEFAULT_FEATURES = [
   // .claude/agents/assistant.md) and brief mode (/brief, SendUserMessage tool)
   'KAIROS',
   'KAIROS_BRIEF',
+  // Background memory extraction after turns (every 3 turns locally; see
+  // memdir/paths.ts isExtractGateOpen)
+  'EXTRACT_MEMORIES',
 ];
 
 const ENABLED_FEATURES = new Set(

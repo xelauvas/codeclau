@@ -66,8 +66,20 @@ export function isAutoMemoryEnabled(): boolean {
  * live inside this helper because feature() only tree-shakes when used
  * directly in an `if` condition.
  */
+/**
+ * Local builds have no remote flag service: background memory extraction is
+ * on whenever the OpenAI-compatible backend is used, unless disabled with
+ * CLAUDE_CODE_DISABLE_MEMORY_EXTRACTION=1.
+ */
+export function isExtractGateOpen(): boolean {
+  if (process.env.OPENAI_API_KEY) {
+    return !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_MEMORY_EXTRACTION)
+  }
+  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', false)
+}
+
 export function isExtractModeActive(): boolean {
-  if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', false)) {
+  if (!isExtractGateOpen()) {
     return false
   }
   return (

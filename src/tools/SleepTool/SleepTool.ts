@@ -5,6 +5,8 @@ import { lazySchema } from '../../utils/lazySchema.js'
 import { DESCRIPTION, SLEEP_TOOL_NAME, SLEEP_TOOL_PROMPT } from './prompt.js'
 
 const MAX_SECONDS = 60 * 60
+// Proactive sleeps are capped lower so a user prompt never waits long behind one.
+const PROACTIVE_MAX_SECONDS = 15 * 60
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -27,6 +29,21 @@ const outputSchema = lazySchema(() =>
 )
 type OutputSchema = ReturnType<typeof outputSchema>
 export type Output = z.infer<OutputSchema>
+
+function waitFor(ms: number, signal: AbortSignal): Promise<boolean> {
+  return new Promise<boolean>(resolve => {
+    if (signal.aborted) return resolve(true)
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve(false)
+    }, ms)
+    const onAbort = (): void => {
+      clearTimeout(timer)
+      resolve(true)
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
 
 export const SleepTool = buildTool({
   name: SLEEP_TOOL_NAME,
@@ -72,13 +89,35 @@ export const SleepTool = buildTool({
     // In proactive mode the wait is the gap until the next <tick>: schedule
     // it and end the turn instead of holding the loop open.
     if (isProactiveActive()) {
-      const ms = Math.min(seconds, MAX_SECONDS) * 1000
+      // Proactive mode: really wait (abortable). Returning immediately let a
+      // small model keep working in a tight loop instead of ending its turn;
+      // blocking makes "do the task, Sleep 60" pace itself at one cycle per
+      // minute whatever the model does afterwards. The footer countdown
+      // shows the wake-up time; a tick that fires meanwhile is queued.
+      const ms = Math.min(seconds, PROACTIVE_MAX_SECONDS) * 1000
       scheduleNextTick(ms)
+      const start = Date.now()
+      const interrupted = await waitFor(ms, abortController.signal)
+      const sleptMs = Date.now() - start
       return {
         data: {
-          sleptMs: 0,
-          interrupted: false,
-          message: `Sleeping ${Math.round(ms / 1000)}s. You will be woken by the next tick; end your turn now.`,
+          sleptMs,
+          interrupted,
+          message: interrupted
+            ? `Sleep interrupted after ${Math.round(sleptMs / 1000)}s.`
+            : `Slept ${Math.round(sleptMs / 1000)}s. If there is still nothing to do, end your turn now; the next tick will wake you.`,
+        },
+      }
+    }
+    const start = Date.now()
+      const interrupted = await waitFor(waitMs, abortController.signal)
+      return {
+        data: {
+          sleptMs: Date.now() - start,
+          interrupted,
+          message: interrupted
+            ? 'Sleep interrupted.'
+            : `Slept ${Math.round(waitMs / 1000)}s; the scheduled tick is now due. End your turn.`,
         },
       }
     }
