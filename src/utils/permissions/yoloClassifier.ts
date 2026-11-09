@@ -1044,7 +1044,14 @@ export async function classifyYoloAction(
   }
 
   const systemPrompt = await buildYoloSystemPrompt(context)
-  const transcriptEntries = buildTranscriptEntries(messages)
+  // Local backends: the whole transcript is re-sent on every classification
+  // and grows with the session; the recent window is what the decision needs.
+  const classifierWindow = process.env.OPENAI_API_KEY
+    ? Math.max(10, Number(process.env.CLAUDE_CODE_CLASSIFIER_WINDOW) || 40)
+    : Infinity
+  const transcriptEntries = buildTranscriptEntries(
+    messages.length > classifierWindow ? messages.slice(-classifierWindow) : messages,
+  )
   const claudeMdMessage = buildClaudeMdMessage()
   const prefixMessages: Anthropic.MessageParam[] = claudeMdMessage
     ? [claudeMdMessage]
