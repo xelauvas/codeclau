@@ -23,9 +23,7 @@ const SuggestBackgroundPRTool =
         .SuggestBackgroundPRTool
     : null
 const SleepTool =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('./tools/SleepTool/SleepTool.js').SleepTool
-    : null
+  feature('PROACTIVE') || feature('KAIROS') ? SleepToolImpl : null
 const cronTools = feature('AGENT_TRIGGERS')
   ? [
       require('./tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
@@ -36,20 +34,15 @@ const cronTools = feature('AGENT_TRIGGERS')
 const RemoteTriggerTool = feature('AGENT_TRIGGERS_REMOTE')
   ? require('./tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool
   : null
-const MonitorTool = feature('MONITOR_TOOL')
-  ? require('./tools/MonitorTool/MonitorTool.js').MonitorTool
-  : null
-const SendUserFileTool = feature('KAIROS')
-  ? require('./tools/SendUserFileTool/SendUserFileTool.js').SendUserFileTool
-  : null
+// Static import (not require): the Monitor shares the notification queue and
+// task registry with the main loop, and the CJS require shim would hand it
+// private copies of those modules.
+const MonitorTool = feature('MONITOR_TOOL') ? MonitorToolImpl : null
+const SendUserFileTool =
+  feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION') ? SendUserFileToolImpl : null
 const PushNotificationTool =
-  feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
-    ? require('./tools/PushNotificationTool/PushNotificationTool.js')
-        .PushNotificationTool
-    : null
-const SubscribePRTool = feature('KAIROS_GITHUB_WEBHOOKS')
-  ? require('./tools/SubscribePRTool/SubscribePRTool.js').SubscribePRTool
-  : null
+  feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION') ? PushNotificationToolImpl : null
+const SubscribePRTool = feature('KAIROS_GITHUB_WEBHOOKS') ? SubscribePRToolImpl : null
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 import { TaskOutputTool } from './tools/TaskOutputTool/TaskOutputTool.js'
 import { WebSearchTool } from './tools/WebSearchTool/WebSearchTool.js'
@@ -90,8 +83,7 @@ import { isTodoV2Enabled } from './utils/tasks.js'
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 const VerifyPlanExecutionTool =
   process.env.CLAUDE_CODE_VERIFY_PLAN === 'true'
-    ? require('./tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js')
-        .VerifyPlanExecutionTool
+    ? VerifyPlanExecutionToolImpl
     : null
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from './tools/SyntheticOutputTool/SyntheticOutputTool.js'
@@ -104,32 +96,29 @@ export {
 import { feature } from 'bun:bundle'
 // Dead code elimination: conditional import for OVERFLOW_TEST_TOOL
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
-const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
-  ? require('./tools/OverflowTestTool/OverflowTestTool.js').OverflowTestTool
-  : null
-const CtxInspectTool = feature('CONTEXT_COLLAPSE')
-  ? require('./tools/CtxInspectTool/CtxInspectTool.js').CtxInspectTool
-  : null
+const OverflowTestTool = feature('OVERFLOW_TEST_TOOL') ? OverflowTestToolImpl : null
+const CtxInspectTool = feature('CONTEXT_COLLAPSE') ? CtxInspectToolImpl : null
 const TerminalCaptureTool = feature('TERMINAL_PANEL')
-  ? require('./tools/TerminalCaptureTool/TerminalCaptureTool.js')
-      .TerminalCaptureTool
+  ? TerminalCaptureToolImpl
   : null
 const WebBrowserTool = feature('WEB_BROWSER_TOOL')
-  ? require('./tools/WebBrowserTool/WebBrowserTool.js').WebBrowserTool
+  ? WebBrowserToolImpl
   : null
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('./coordinator/coordinatorMode.js') as typeof import('./coordinator/coordinatorMode.js'))
   : null
 const SnipTool = feature('HISTORY_SNIP')
-  ? require('./tools/SnipTool/SnipTool.js').SnipTool
+  ? SnipToolImpl
   : null
 const ListPeersTool = feature('UDS_INBOX')
-  ? require('./tools/ListPeersTool/ListPeersTool.js').ListPeersTool
+  ? ListPeersToolImpl
   : null
+// Static import (see MonitorTool): the workflow shares the task registry and
+// notification queue with the app
 const WorkflowTool = feature('WORKFLOW_SCRIPTS')
   ? (() => {
-      require('./tools/WorkflowTool/bundled/index.js').initBundledWorkflows()
-      return require('./tools/WorkflowTool/WorkflowTool.js').WorkflowTool
+      initBundledWorkflows()
+      return WorkflowToolImpl
     })()
   : null
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
@@ -140,6 +129,21 @@ import { isEnvTruthy } from './utils/envUtils.js'
 import { isPowerShellToolEnabled } from './utils/shell/shellToolUtils.js'
 import { isAgentSwarmsEnabled } from './utils/agentSwarmsEnabled.js'
 import { isWorktreeModeEnabled } from './utils/worktreeModeEnabled.js'
+import { MonitorTool as MonitorToolImpl } from './tools/MonitorTool/MonitorTool.js'
+import { SendUserFileTool as SendUserFileToolImpl } from './tools/SendUserFileTool/SendUserFileTool.js'
+import { PushNotificationTool as PushNotificationToolImpl } from './tools/PushNotificationTool/PushNotificationTool.js'
+import { SubscribePRTool as SubscribePRToolImpl } from './tools/SubscribePRTool/SubscribePRTool.js'
+import { OverflowTestTool as OverflowTestToolImpl } from './tools/OverflowTestTool/OverflowTestTool.js'
+import { SleepTool as SleepToolImpl } from './tools/SleepTool/SleepTool.js'
+import { TerminalCaptureTool as TerminalCaptureToolImpl } from './tools/TerminalCaptureTool/TerminalCaptureTool.js'
+import { WebBrowserTool as WebBrowserToolImpl } from './tools/WebBrowserTool/WebBrowserTool.js'
+import { SnipTool as SnipToolImpl } from './tools/SnipTool/SnipTool.js'
+import { ListPeersTool as ListPeersToolImpl } from './tools/ListPeersTool/ListPeersTool.js'
+import { VerifyPlanExecutionTool as VerifyPlanExecutionToolImpl } from './tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js'
+import { CtxInspectTool as CtxInspectToolImpl } from './tools/CtxInspectTool/CtxInspectTool.js'
+import { WorkflowTool as WorkflowToolImpl } from './tools/WorkflowTool/WorkflowTool.js'
+import { initBundledWorkflows } from './tools/WorkflowTool/bundled/index.js'
+import { DiscoverSkillsTool as DiscoverSkillsToolImpl } from './tools/DiscoverSkillsTool/DiscoverSkillsTool.js'
 import {
   REPL_TOOL_NAME,
   REPL_ONLY_TOOLS,
@@ -231,6 +235,7 @@ export function getAllBaseTools(): Tools {
     ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
     ...(process.env.USER_TYPE === 'ant' && REPLTool ? [REPLTool] : []),
     ...(WorkflowTool ? [WorkflowTool] : []),
+    ...(feature('EXPERIMENTAL_SKILL_SEARCH') ? [DiscoverSkillsToolImpl] : []),
     ...(SleepTool ? [SleepTool] : []),
     ...cronTools,
     ...(RemoteTriggerTool ? [RemoteTriggerTool] : []),

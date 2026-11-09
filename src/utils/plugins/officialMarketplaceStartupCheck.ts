@@ -147,6 +147,15 @@ export type OfficialMarketplaceCheckResult = {
 export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMarketplaceCheckResult> {
   const config = getGlobalConfig()
 
+  // The env var must win before the retry bookkeeping: otherwise a failure
+  // recorded earlier keeps surfacing as "will retry" on every startup
+  if (isOfficialMarketplaceAutoInstallDisabled()) {
+    logForDebugging(
+      'Official marketplace auto-install disabled via env var, skipping',
+    )
+    return { installed: false, skipped: true, reason: 'policy_blocked' }
+  }
+
   // Check if we should retry installation
   if (!shouldRetryInstallation(config)) {
     const reason: OfficialMarketplaceSkipReason =

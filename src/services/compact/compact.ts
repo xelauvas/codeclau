@@ -426,7 +426,7 @@ export async function compactConversation(
     // Show requesting mode with up arrow and custom message
     context.setStreamMode?.('requesting')
     context.setResponseLength?.(() => 0)
-    context.onCompactProgress?.({ type: 'compact_start' })
+    context.onCompactProgress?.({ type: 'compact_start', preCompactTokenCount })
 
     // 3P default: true — forked-agent path reuses main conversation's prompt cache.
     // Experiment (Jan 2026) confirmed: false path is 98% cache miss, costs ~0.76% of
@@ -835,7 +835,7 @@ export async function partialCompactConversation(
 
     context.setStreamMode?.('requesting')
     context.setResponseLength?.(() => 0)
-    context.onCompactProgress?.({ type: 'compact_start' })
+    context.onCompactProgress?.({ type: 'compact_start', preCompactTokenCount })
 
     const compactPrompt = getPartialCompactPrompt(customInstructions, direction)
     const summaryRequest = createUserMessage({
@@ -1197,6 +1197,21 @@ async function streamCompactSummary({
           // fork — same signal the streaming fallback uses at
           // `signal: context.abortController.signal` below.
           overrides: { abortController: context.abortController },
+          // Feed streamed summary text into the parent's response counter so
+          // the spinner's progress bar and token count move while the
+          // summary is generated (the fork's own context is a no-op there).
+          onStreamEvent: message => {
+            const ev = message as { type?: string; event?: { type?: string; delta?: { type?: string; text?: string } } }
+            if (
+              ev.type === 'stream_event' &&
+              ev.event?.type === 'content_block_delta' &&
+              ev.event.delta?.type === 'text_delta' &&
+              typeof ev.event.delta.text === 'string'
+            ) {
+              const n = ev.event.delta.text.length
+              context.setResponseLength?.(length => length + n)
+            }
+          },
         })
         const assistantMsg = getLastAssistantMessage(result.messages)
         const assistantText = assistantMsg
@@ -1325,6 +1340,7 @@ async function streamCompactSummary({
         },
       })
       const streamIter = streamingGen[Symbol.asyncIterator]()
+      let summaryCharsStreamed = 0
       let next = await streamIter.next()
 
       while (!next.done) {
@@ -1346,6 +1362,7 @@ async function streamCompactSummary({
           event.event.delta.type === 'text_delta'
         ) {
           const charactersStreamed = event.event.delta.text.length
+          summaryCharsStreamed += charactersStreamed
           context.setResponseLength?.(length => length + charactersStreamed)
         }
 
@@ -1357,6 +1374,9 @@ async function streamCompactSummary({
       }
 
       if (response) {
+        logForDebugging(
+          `[compact] summary streamed: ${summaryCharsStreamed} chars, hasStartedStreaming=${hasStartedStreaming}`,
+        )
         return response
       }
 

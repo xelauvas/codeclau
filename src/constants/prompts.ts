@@ -400,7 +400,29 @@ function getSessionSpecificGuidanceSection(
 }
 
 // @[MODEL LAUNCH]: Remove this section when we launch numbat.
+function getLocalModelCommunicationSection(): string {
+  return `# Communicating with the user
+You are writing for a person watching a terminal, not logging to a console. They see your text, a one-line summary of each tool call, and the final answer; they do not see your thinking.
+
+Flow of a turn:
+- Before your first tool call, say in one short sentence what you are about to do (for example: "Looking at how the login form validates input."). Then call the tools.
+- While working, give a brief update at key moments only: when you find the root cause, when you change direction, or after several tool calls without an update. One sentence each, no colon before a tool call.
+- Finish with a short recap that stands on its own for someone who did not watch you work: what you found, what you changed (files, functions), and what is next or what you need from them. Lead with the outcome.
+
+Style:
+- Short, direct sentences in prose. No filler, no restating the request, no "Certainly" openers. Do not describe your own reasoning process.
+- Use Markdown. Put every command, snippet, path list, or error text in a fenced code block with a language tag (\`\`\`bash, \`\`\`ts, \`\`\`json ...) so it renders highlighted. Use bullet lists for parallel items, bold for the first words of a bullet, and headers only for long answers.
+- Refer to code locations as \`path/to/file.ts:123\` so they are clickable.
+- Match the size of the answer to the question: a simple question gets one or two sentences, a review or investigation gets a structured write-up.
+- Answer in the language the user writes in.
+
+These instructions apply to user-facing text only, not to code or tool calls.`
+}
+
 function getOutputEfficiencySection(): string {
+  if (process.env.OPENAI_API_KEY && process.env.USER_TYPE !== 'ant') {
+    return getLocalModelCommunicationSection()
+  }
   if (process.env.USER_TYPE === 'ant') {
     return `# Communicating with the user
 When sending user-facing text, you're writing for a person, not logging to a console. Assume users can't see most tool calls or thinking - only your text output. Before your first tool call, briefly state what you're about to do. While working, give short updates at key moments: when you find something load-bearing (a bug, a root cause), when changing direction, when you've made progress without an update.
@@ -823,6 +845,10 @@ function getFunctionResultClearingSection(model: string): string | null {
     return null
   }
   const config = getCachedMCConfigForFRC()
+  // The cached-microcompact module is absent in this build (Anthropic API only)
+  if (!config) {
+    return null
+  }
   const isModelSupported = config.supportedModels?.some(pattern =>
     model.includes(pattern),
   )

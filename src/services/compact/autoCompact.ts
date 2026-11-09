@@ -31,11 +31,14 @@ const MAX_OUTPUT_TOKENS_FOR_SUMMARY = 20_000
 
 // Returns the context window size minus the max output tokens for the model
 export function getEffectiveContextWindowSize(model: string): number {
+  let contextWindow = getContextWindowForModel(model, getSdkBetas())
+  // The fixed reserves were sized for a 200k window. On a small local window
+  // (64k) they would leave almost nothing for the conversation, so scale them.
   const reservedTokensForSummary = Math.min(
     getMaxOutputTokensForModel(model),
     MAX_OUTPUT_TOKENS_FOR_SUMMARY,
+    smallWindowCap(contextWindow, 8),
   )
-  let contextWindow = getContextWindowForModel(model, getSdkBetas())
 
   const autoCompactWindow = process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW
   if (autoCompactWindow) {
@@ -69,11 +72,20 @@ export const MANUAL_COMPACT_BUFFER_TOKENS = 3_000
 // in a single session, wasting ~250K API calls/day globally.
 const MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3
 
+// OpenAI-compatible backends only: cap a fixed token reserve at 1/divisor of the
+// window, so 64k-128k local models keep most of their context usable
+function smallWindowCap(contextWindow: number, divisor: number): number {
+  return process.env.OPENAI_API_KEY
+    ? Math.floor(contextWindow / divisor)
+    : Number.POSITIVE_INFINITY
+}
+
 export function getAutoCompactThreshold(model: string): number {
   const effectiveContextWindow = getEffectiveContextWindowSize(model)
 
   const autocompactThreshold =
-    effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS
+    effectiveContextWindow -
+    Math.min(AUTOCOMPACT_BUFFER_TOKENS, smallWindowCap(effectiveContextWindow, 10))
 
   // Override for easier testing of autocompact
   const envPercent = process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
@@ -110,8 +122,10 @@ export function calculateTokenWarningState(
     Math.round(((threshold - tokenUsage) / threshold) * 100),
   )
 
-  const warningThreshold = threshold - WARNING_THRESHOLD_BUFFER_TOKENS
-  const errorThreshold = threshold - ERROR_THRESHOLD_BUFFER_TOKENS
+  const warningThreshold =
+    threshold - Math.min(WARNING_THRESHOLD_BUFFER_TOKENS, smallWindowCap(threshold, 8))
+  const errorThreshold =
+    threshold - Math.min(ERROR_THRESHOLD_BUFFER_TOKENS, smallWindowCap(threshold, 8))
 
   const isAboveWarningThreshold = tokenUsage >= warningThreshold
   const isAboveErrorThreshold = tokenUsage >= errorThreshold

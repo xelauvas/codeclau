@@ -59,6 +59,12 @@ export const MCPTool = buildTool({
       message: 'MCPTool requires permission.',
     }
   },
+  // MCP tools can do anything (context-mode's ctx_execute runs shell commands),
+  // so auto mode must classify them instead of skipping them as irrelevant
+  toAutoClassifierInput(input) {
+    const text = JSON.stringify(input)
+    return text.length > 4000 ? text.slice(0, 4000) + '…' : text
+  },
   renderToolUseMessage,
   // Overridden in mcpClient.ts
   userFacingName: () => 'mcp',

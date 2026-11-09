@@ -253,9 +253,13 @@ export function getLogoDisplayData(): {
   const cwd = serverUrl
     ? `${displayPath} in ${serverUrl.replace(/^https?:\/\//, '')}`
     : displayPath
-  const billingType = isClaudeAISubscriber()
-    ? getSubscriptionName()
-    : 'API Usage Billing'
+  const billingType = process.env.OPENAI_API_KEY
+    ? process.env.OPENAI_BASE_URL && /localhost|127\.0\.0\.1/.test(process.env.OPENAI_BASE_URL)
+      ? 'Local model'
+      : 'OpenAI-compatible API'
+    : isClaudeAISubscriber()
+      ? getSubscriptionName()
+      : 'API Usage Billing'
   const agentName = getInitialSettings().agent
 
   return {

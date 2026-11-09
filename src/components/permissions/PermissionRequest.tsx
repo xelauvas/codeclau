@@ -31,10 +31,12 @@ import { NotebookEditPermissionRequest } from './NotebookEditPermissionRequest/N
 import { PowerShellPermissionRequest } from './PowerShellPermissionRequest/PowerShellPermissionRequest.js';
 import { SkillPermissionRequest } from './SkillPermissionRequest/SkillPermissionRequest.js';
 import { WebFetchPermissionRequest } from './WebFetchPermissionRequest/WebFetchPermissionRequest.js';
+import { ReviewArtifactTool as ReviewArtifactToolImpl } from '../../tools/ReviewArtifactTool/ReviewArtifactTool.js';
+import { ReviewArtifactPermissionRequest as ReviewArtifactPermissionRequestImpl } from './ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const ReviewArtifactTool = feature('REVIEW_ARTIFACT') ? (require('../../tools/ReviewArtifactTool/ReviewArtifactTool.js') as typeof import('../../tools/ReviewArtifactTool/ReviewArtifactTool.js')).ReviewArtifactTool : null;
-const ReviewArtifactPermissionRequest = feature('REVIEW_ARTIFACT') ? (require('./ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js') as typeof import('./ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js')).ReviewArtifactPermissionRequest : null;
+const ReviewArtifactTool = feature('REVIEW_ARTIFACT') ? ReviewArtifactToolImpl : null;
+const ReviewArtifactPermissionRequest = feature('REVIEW_ARTIFACT') ? ReviewArtifactPermissionRequestImpl : null;
 const WorkflowTool = feature('WORKFLOW_SCRIPTS') ? (require('../../tools/WorkflowTool/WorkflowTool.js') as typeof import('../../tools/WorkflowTool/WorkflowTool.js')).WorkflowTool : null;
 const WorkflowPermissionRequest = feature('WORKFLOW_SCRIPTS') ? (require('../../tools/WorkflowTool/WorkflowPermissionRequest.js') as typeof import('../../tools/WorkflowTool/WorkflowPermissionRequest.js')).WorkflowPermissionRequest : null;
 const MonitorTool = feature('MONITOR_TOOL') ? (require('../../tools/MonitorTool/MonitorTool.js') as typeof import('../../tools/MonitorTool/MonitorTool.js')).MonitorTool : null;

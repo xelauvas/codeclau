@@ -1,4 +1,9 @@
 import { c as _c } from "react/compiler-runtime";
+// Static imports (not require): these touch React context / shared state and
+// must be the same module instance as the rest of the ESM graph.
+import * as proactiveModuleImpl from '../proactive/index.js';
+import { useProactive as useProactiveImpl } from '../proactive/useProactive.js';
+import { useScheduledTasks as useScheduledTasksImpl } from '../hooks/useScheduledTasks.js';
 // biome-ignore-all assist/source/organizeImports: ANT-ONLY import markers must not be reordered
 import { feature } from 'bun:bundle';
 import { spawnSync } from 'child_process';
@@ -67,6 +72,7 @@ import { SkillImprovementSurvey } from '../components/SkillImprovementSurvey.js'
 import { useSkillImprovementSurvey } from '../hooks/useSkillImprovementSurvey.js';
 import { useMoreRight } from '../moreright/useMoreRight.js';
 import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from '../components/Spinner.js';
+import type { CompactProgressInfo } from '../components/Spinner.js';
 import { getSystemPrompt } from '../constants/prompts.js';
 import { buildEffectiveSystemPrompt } from '../utils/systemPrompt.js';
 import { getSystemContext, getUserContext } from '../context.js';
@@ -191,12 +197,12 @@ import { restoreRemoteAgentTasks } from '../tasks/RemoteAgentTask/RemoteAgentTas
 import { useInboxPoller } from '../hooks/useInboxPoller.js';
 // Dead code elimination: conditional import for loop mode
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../proactive/index.js') : null;
+const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? proactiveModuleImpl : null;
 const PROACTIVE_NO_OP_SUBSCRIBE = (_cb: () => void) => () => {};
 const PROACTIVE_FALSE = () => false;
 const SUGGEST_BG_PR_NOOP = (_p: string, _n: string): boolean => false;
-const useProactive = feature('PROACTIVE') || feature('KAIROS') ? require('../proactive/useProactive.js').useProactive : null;
-const useScheduledTasks = feature('AGENT_TRIGGERS') ? require('../hooks/useScheduledTasks.js').useScheduledTasks : null;
+const useProactive = feature('PROACTIVE') || feature('KAIROS') ? useProactiveImpl : null;
+const useScheduledTasks = feature('AGENT_TRIGGERS') ? useScheduledTasksImpl : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { isAgentSwarmsEnabled } from '../utils/agentSwarmsEnabled.js';
 import { useTaskListWatcher } from '../hooks/useTaskListWatcher.js';
@@ -1473,6 +1479,9 @@ export function REPL({
   const visibleStreamingText = streamingText && showStreamingText ? streamingText.substring(0, streamingText.lastIndexOf('\n') + 1) || null : null;
   const [lastQueryCompletionTime, setLastQueryCompletionTime] = useState(0);
   const [spinnerMessage, setSpinnerMessage] = useState<string | null>(null);
+  // Set while a compaction summary is being generated; drives the progress
+  // bar under the spinner (see CompactProgressBar in Spinner.tsx).
+  const [compactProgress, setCompactProgress] = useState<CompactProgressInfo | null>(null);
   const [spinnerColor, setSpinnerColor] = useState<keyof Theme | null>(null);
   const [spinnerShimmerColor, setSpinnerShimmerColor] = useState<keyof Theme | null>(null);
   const [isMessageSelectorVisible, setIsMessageSelectorVisible] = useState(false);
@@ -1576,6 +1585,7 @@ export function REPL({
     setStreamingText(null);
     setStreamingToolUses([]);
     setSpinnerMessage(null);
+    setCompactProgress(null);
     setSpinnerColor(null);
     setSpinnerShimmerColor(null);
     pickNewSpinnerTip();
@@ -2503,9 +2513,14 @@ export function REPL({
             break;
           case 'compact_start':
             setSpinnerMessage('Compacting conversation');
+            setCompactProgress({
+              startedAt: Date.now(),
+              preCompactTokenCount: event.preCompactTokenCount ?? 0
+            });
             break;
           case 'compact_end':
             setSpinnerMessage(null);
+            setCompactProgress(null);
             setSpinnerColor(null);
             setSpinnerShimmerColor(null);
             break;
@@ -4584,7 +4599,7 @@ export function REPL({
               {"external" === 'ant' && <TungstenLiveMonitor />}
               {feature('WEB_BROWSER_TOOL') ? WebBrowserPanelModule && <WebBrowserPanelModule.WebBrowserPanel /> : null}
               <Box flexGrow={1} />
-              {showSpinner && <SpinnerWithVerb mode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} overrideMessage={spinnerMessage} spinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} overrideColor={spinnerColor} overrideShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} />}
+              {showSpinner && <SpinnerWithVerb mode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} overrideMessage={spinnerMessage} compactProgress={compactProgress} spinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} overrideColor={spinnerColor} overrideShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} />}
               {!showSpinner && !isLoading && !userInputOnProcessing && !hasRunningTeammates && isBriefOnly && !viewedAgentTask && <BriefIdleStatus />}
               {isFullscreenEnvEnabled() && <PromptInputQueuedCommands />}
             </>} bottom={<Box flexDirection={feature('BUDDY') && companionNarrow ? 'column' : 'row'} width="100%" alignItems={feature('BUDDY') && companionNarrow ? undefined : 'flex-end'}>

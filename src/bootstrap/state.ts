@@ -1756,4 +1756,9 @@ export function setPromptId(id: string | null): void {
   STATE.promptId = id
 }
 
-export const isReplBridgeActive = undefined;
+export function isReplBridgeActive(): boolean {
+  return (STATE as { replBridgeActive?: boolean }).replBridgeActive === true
+}
+export function setReplBridgeActive(active: boolean): void {
+  ;(STATE as { replBridgeActive?: boolean }).replBridgeActive = active
+}

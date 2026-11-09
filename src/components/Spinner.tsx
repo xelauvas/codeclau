@@ -39,8 +39,14 @@ import { getGlobalConfig } from '../utils/config.js';
 export type { SpinnerMode } from './Spinner/index.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS, ...[...DEFAULT_CHARACTERS].reverse()];
+export type CompactProgressInfo = {
+  startedAt: number;
+  preCompactTokenCount: number;
+};
 type Props = {
   mode: SpinnerMode;
+  /** Set while /compact or auto-compact is summarizing; shows a progress bar. */
+  compactProgress?: CompactProgressInfo | null;
   loadingStartTimeRef: React.RefObject<number>;
   totalPausedMsRef: React.RefObject<number>;
   pauseStartTimeRef: React.RefObject<number | null>;
@@ -89,6 +95,7 @@ function SpinnerWithVerbInner({
   overrideColor,
   overrideShimmerColor,
   overrideMessage,
+  compactProgress,
   spinnerSuffix,
   verbose,
   hasActiveTools = false,
@@ -254,7 +261,9 @@ function SpinnerWithVerbInner({
   // cause re-renders that refresh this in practice.
   let contextTipsActive = false;
   const tipsEnabled = settings.spinnerTipsEnabled !== false;
-  const showClearTip = tipsEnabled && elapsedSnapshot > 1_800_000;
+  // While compacting, /clear is the relevant hint whatever the elapsed time:
+  // the user is waiting on context pressure right now.
+  const showClearTip = tipsEnabled && (elapsedSnapshot > 1_800_000 || !!compactProgress);
   const showBtwTip = tipsEnabled && elapsedSnapshot > 30_000 && !getGlobalConfig().btwUseCount;
   const effectiveTip = contextTipsActive ? undefined : showClearTip && !nextTask ? 'Use /clear to start fresh when switching topics and free up context' : showBtwTip && !nextTask ? "Use /btw to ask a quick side question without interrupting Claude's current work" : spinnerTip;
 
@@ -279,6 +288,7 @@ function SpinnerWithVerbInner({
   }
   return <Box flexDirection="column" width="100%" alignItems="flex-start">
       <SpinnerAnimationRow mode={mode} reducedMotion={reducedMotion} hasActiveTools={hasActiveTools} responseLengthRef={responseLengthRef} message={message} messageColor={messageColor} shimmerColor={shimmerColor} overrideColor={overrideColor} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerSuffix={spinnerSuffix} verbose={verbose} columns={columns} hasRunningTeammates={hasRunningTeammates} teammateTokens={teammateTokens} foregroundedTeammate={foregroundedTeammate} leaderIsIdle={leaderIsIdle} thinkingStatus={thinkingStatus} effortSuffix={effortSuffix} />
+      {compactProgress && <CompactProgressBar info={compactProgress} responseLengthRef={responseLengthRef} columns={columns} />}
       {showSpinnerTree && hasRunningTeammates ? <TeammateSpinnerTree selectedIndex={selectedIPAgentIndex} isInSelectionMode={viewSelectionMode === 'selecting-agent'} allIdle={allIdle} leaderVerb={leaderIsIdle ? undefined : leaderVerb} leaderIdleText={leaderIsIdle ? 'Idle' : undefined} leaderTokenCount={leaderTokenCount} /> : showExpandedTodos && tasksV2 && tasksV2.length > 0 ? <Box width="100%" flexDirection="column">
           <MessageResponse>
             <TaskListV2 tasks={tasksV2} />
@@ -297,6 +307,49 @@ function SpinnerWithVerbInner({
               </Text>
             </MessageResponse>}
         </Box> : null}
+    </Box>;
+}
+
+/**
+ * Progress bar shown under "Compacting conversation…". Compaction streams a
+ * summary whose length we can only estimate, so the ratio blends two signals:
+ * characters streamed so far against the expected summary size, and elapsed
+ * time against the expected prompt-processing time (so the bar moves while a
+ * large prompt is still being read and nothing has streamed yet). It never
+ * reaches 100% on its own; compact_end removes it.
+ */
+function CompactProgressBar({
+  info,
+  responseLengthRef,
+  columns
+}: {
+  info: CompactProgressInfo;
+  responseLengthRef: React.RefObject<number>;
+  columns: number;
+}): React.ReactNode {
+  // The clock only ticks while the ref'd element is visible, so it must be
+  // attached to the rendered Box.
+  // `time` is only used to re-render on the shared clock; its epoch is not
+  // wall time, so elapsed is computed from Date.now().
+  const [viewportRef, time] = useAnimationFrame(250);
+  void time;
+  const tokens = info.preCompactTokenCount;
+  // Measured locally: summaries run about 5% of the input (≈1k tokens for a
+  // 20k context), bounded to a sane range; 4 chars per token.
+  const expectedChars = Math.min(3_000, Math.max(700, tokens * 0.05)) * 4;
+  // Prompt processing: ~0.5ms/token on fast backends, floor of 3s.
+  const expectedPromptMs = Math.max(3_000, tokens * 0.5);
+  const streamed = responseLengthRef.current ?? 0;
+  const streamRatio = streamed / expectedChars;
+  const elapsed = Math.max(0, Date.now() - info.startedAt);
+  const timeRatio = Math.min(1, elapsed / expectedPromptMs) * 0.25;
+  const ratio = Math.min(0.99, Math.max(streamed > 0 ? 0.25 + streamRatio * 0.74 : 0, timeRatio));
+  const width = Math.max(10, Math.min(40, columns - 10));
+  const filled = Math.round(ratio * width);
+  const pct = Math.round(ratio * 100);
+  return <Box ref={viewportRef} flexDirection="row" paddingLeft={2}>
+      <Text color="claudeBlue_FOR_SYSTEM_SPINNER">{'\u25B0'.repeat(filled)}</Text>
+      <Text dimColor>{'\u25B1'.repeat(width - filled)} {pct}%</Text>
     </Box>;
 }
 

@@ -3,3 +3,4 @@ src/_shims/_generated_stubs/
 .cache/
 *.log
 .env
+.gstack/

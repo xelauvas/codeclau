@@ -1,5 +1,6 @@
 /* eslint-disable custom-rules/no-process-exit */
 
+import { logForDebugging } from './utils/debug.js'
 import { feature } from 'bun:bundle'
 import chalk from 'chalk'
 import {
@@ -93,11 +94,15 @@ export async function setup(
     // and $CLAUDE_CODE_MESSAGING_SOCKET is exported before any hook
     // (SessionStart in particular) can spawn and snapshot process.env.
     if (feature('UDS_INBOX')) {
-      const m = await import('./utils/udsMessaging.js')
-      await m.startUdsMessaging(
-        messagingSocketPath ?? m.getDefaultUdsSocketPath(),
-        { isExplicit: messagingSocketPath !== undefined },
-      )
+      try {
+        const m = await import('./utils/udsMessaging.js')
+        await m.startUdsMessaging(
+          messagingSocketPath ?? m.getDefaultUdsSocketPath(),
+          { isExplicit: messagingSocketPath !== undefined },
+        )
+      } catch (e) {
+        logForDebugging(`[uds] messaging server not started: ${String(e)}`)
+      }
     }
   }
 

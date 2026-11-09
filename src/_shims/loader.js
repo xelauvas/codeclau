@@ -231,8 +231,83 @@ try { writeFileSync(UNIVERSAL_STUB_PATH, UNIVERSAL_STUB_SOURCE); } catch {}
 const UNIVERSAL_STUB_URL = pathToFileURL(UNIVERSAL_STUB_PATH).href;
 stubUrls.add(UNIVERSAL_STUB_URL);
 
-function generateStubUrl(_specifier) {
-  return UNIVERSAL_STUB_URL;
+// XELA_LOADER_DEBUG=1 lists every import that resolved to a stub (missing module)
+const LOADER_DEBUG = !!process.env.XELA_LOADER_DEBUG;
+
+// Stub value heuristics, by export name:
+//   PascalCase (classes, tools, components, tasks) -> undefined, so
+//     `feature('X') ? mod.Thing : null` style code skips the feature;
+//   UPPER_SNAKE constants -> [] when plural-looking, '' otherwise, so
+//     `.length`, spreads and string ops keep working;
+//   camelCase functions -> a no-op returning undefined.
+function stubValueFor(name) {
+  if (/^[A-Z][A-Z0-9_]*$/.test(name)) {
+    return /(S|LIST|TOOLS|KEYS|NAMES|PATHS|TYPES|FLAGS)$/.test(name) ? '[]' : "''";
+  }
+  if (/^[A-Z]/.test(name)) return 'undefined';
+  // predicates stay false, getters/loaders yield nothing, transform-style
+  // helpers (projectView(messages), applyX(messages)) pass their input through
+  if (/^(is|has|should|can|was|needs|allow|supports|uses|matches|includes|contains)[A-Z_]/.test(name)) return '() => false';
+  if (/^(get|find|read|load|fetch|resolve|create|build|make|compute|calculate|extract|lookup|select|detect)[A-Z_]/.test(name)) return '() => undefined';
+  return '(x) => x';
+}
+
+// Build a stub tailored to what the importing file actually imports from the
+// missing specifier. A universal stub cannot know every export name, and an
+// ESM import of a name the stub lacks is a link-time error.
+function collectImportedNames(parentSource, specifier) {
+  const names = new Set();
+  let hasDefault = false;
+  let hasNamespace = false;
+  const esc = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(
+    `import\\s+(?:type\\s+)?([^;'"]*?)\\s+from\\s+['"]${esc}['"]|export\\s+(?:type\\s+)?(\\{[^}]*\\})\\s+from\\s+['"]${esc}['"]`,
+    'g',
+  );
+  let m;
+  while ((m = re.exec(parentSource)) !== null) {
+    const clause = (m[1] ?? m[2] ?? '').trim();
+    if (!clause) continue;
+    if (clause.startsWith('*')) { hasNamespace = true; continue; }
+    const braces = clause.match(/\{([^}]*)\}/);
+    const before = clause.replace(/\{[^}]*\}/, '').replace(/,/g, '').trim();
+    if (before && !before.startsWith('type ')) hasDefault = true;
+    if (braces) {
+      for (const part of braces[1].split(',')) {
+        const p = part.trim().replace(/^type\s+/, '');
+        if (!p) continue;
+        const asMatch = p.match(/^(\S+)\s+as\s+(\S+)$/);
+        const exported = asMatch ? asMatch[1] : p;
+        if (exported === 'default') { hasDefault = true; continue; }
+        names.add(exported);
+      }
+    }
+  }
+  return { names: [...names], hasDefault, hasNamespace };
+}
+
+function generateStubUrl(specifier, parentURL) {
+  const parent = parentURL ? fileURLToPath(parentURL) : null;
+  if (LOADER_DEBUG) {
+    process.stderr.write(`[loader] STUB ${specifier}  <- ${parent ? parent.replace(SRC_ROOT + '/', '') : '?'}\n`);
+  }
+  if (!parent) return UNIVERSAL_STUB_URL;
+  let source = '';
+  try { source = readFileSync(parent, 'utf-8'); } catch { return UNIVERSAL_STUB_URL; }
+  const { names, hasDefault } = collectImportedNames(source, specifier);
+  if (LOADER_DEBUG) process.stderr.write(`[loader]   names for ${specifier}: ${names.join(',') || '(none)'} default=${hasDefault}\n`);
+  if (names.length === 0 && !hasDefault) return UNIVERSAL_STUB_URL;
+  const lines = [`// Generated stub for missing module ${specifier} (imported by ${parent.replace(SRC_ROOT + '/', '')})`];
+  for (const name of names) lines.push(`export const ${name} = ${stubValueFor(name)};`);
+  lines.push(`export default ${hasDefault ? "''" : '{}'};`);
+  const key = createHash('md5').update(specifier + '|' + names.sort().join(',') + '|' + hasDefault).digest('hex');
+  const stubPath = join(STUB_DIR, `stub_${key}.mjs`);
+  if (!isFile(stubPath)) {
+    try { writeFileSync(stubPath, lines.join('\n') + '\n'); } catch { return UNIVERSAL_STUB_URL; }
+  }
+  const url = pathToFileURL(stubPath).href;
+  stubUrls.add(url);
+  return url;
 }
 
 export async function resolve(specifier, context, nextResolve) {
@@ -248,7 +323,7 @@ export async function resolve(specifier, context, nextResolve) {
     if (resolved) {
       return { url: pathToFileURL(resolved).href, shortCircuit: true };
     }
-    const stubUrl = generateStubUrl(specifier);
+    const stubUrl = generateStubUrl(specifier, context.parentURL);
     return { url: stubUrl, shortCircuit: true };
   }
 
@@ -269,7 +344,7 @@ export async function resolve(specifier, context, nextResolve) {
       return { url: pathToFileURL(textStubPath).href, shortCircuit: true };
     }
     // Extract the basename for stub generation
-    const stubUrl = generateStubUrl(specifier.split('/').pop().replace(/\.\w+$/, ''));
+    const stubUrl = generateStubUrl(specifier, context.parentURL);
     return { url: stubUrl, shortCircuit: true };
   }
 
@@ -278,7 +353,7 @@ export async function resolve(specifier, context, nextResolve) {
     const result = await nextResolve(specifier, context);
     return result;
   } catch (err) {
-    const stubUrl = generateStubUrl(specifier.split('/').pop() || specifier);
+    const stubUrl = generateStubUrl(specifier, context.parentURL);
     return { url: stubUrl, shortCircuit: true };
   }
 }
@@ -313,6 +388,30 @@ export function load(url, context, nextLoad) {
         jsxFragment: 'React.Fragment',
         sourcefile: filePath,
       }));
+
+      // Dynamic import() of a module that does not exist (feature-gated code
+      // that was stripped): resolve to a proxy whose camelCase members are
+      // pass-through functions and PascalCase members are undefined, instead
+      // of a stub that cannot know which names the caller will read.
+      code = code.replace(/\bimport\((['"])((?:\.|src\/)[^'"]+)\1\)/g, (full, q, spec) => {
+        const base = spec.startsWith('src/') ? join(SRC_ROOT, spec.slice(4)) : pathResolve(dirname(filePath), spec);
+        if (tryResolveFile(base)) return full;
+        if (LOADER_DEBUG) process.stderr.write(`[loader] DYNAMIC STUB ${spec}  <- ${filePath.replace(SRC_ROOT + '/', '')}\n`);
+        return `Promise.resolve(globalThis.__xelaMissingModule(${JSON.stringify(spec)}))`;
+      });
+      if (code.includes('__xelaMissingModule(')) {
+        code = `globalThis.__xelaMissingModule ??= (spec) => new Proxy({}, { get(_t, prop) {
+  if (prop === 'then') return undefined;
+  if (prop === 'default') return '';
+  if (typeof prop !== 'string') return undefined;
+  if (/^[A-Z][A-Z0-9_]*$/.test(prop)) return /(S|LIST|TOOLS|KEYS|NAMES|PATHS|TYPES|FLAGS)$/.test(prop) ? [] : '';
+  if (/^[A-Z]/.test(prop)) return undefined;
+  if (/^(is|has|should|can|was|needs|allow|supports|uses|matches|includes|contains)[A-Z_]/.test(prop)) return () => false;
+  if (/^(get|find|read|load|fetch|resolve|create|build|make|compute|calculate|extract|lookup|select|detect)[A-Z_]/.test(prop)) return () => undefined;
+  return (x) => x;
+} });
+` + code;
+      }
 
       // If the compiled code still has require() calls, inject a CJS-compatible require
       // that resolves relative to this file's directory

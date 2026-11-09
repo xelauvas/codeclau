@@ -163,6 +163,11 @@ export function modelSupportsAutoMode(model: string): boolean {
     // External: firstParty-only at launch (PI probes not wired for
     // Bedrock/Vertex/Foundry yet). Checked before allowModels so the GB
     // override can't enable auto mode on unsupported providers.
+    // OpenAI-compatible backend: the classifier runs on the local model itself
+    // (getClassifierModel falls back to the main loop model), so no provider gate
+    if (process.env.OPENAI_API_KEY) {
+      return true
+    }
     if (process.env.USER_TYPE !== 'ant' && getAPIProvider() !== 'firstParty') {
       return false
     }

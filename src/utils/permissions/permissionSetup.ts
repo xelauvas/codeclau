@@ -1316,6 +1316,11 @@ function parseAutoModeEnabledState(value: unknown): AutoModeEnabledState {
   if (value === 'enabled' || value === 'disabled' || value === 'opt-in') {
     return value
   }
+  // OpenAI-compatible backend has no GrowthBook config; the classifier runs on
+  // the configured model, so auto mode is offered (the user still picks it)
+  if (process.env.OPENAI_API_KEY) {
+    return 'enabled'
+  }
   return AUTO_MODE_ENABLED_DEFAULT
 }
 

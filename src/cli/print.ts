@@ -2422,6 +2422,11 @@ function runHeadlessStreaming(
         }
       }
     } catch (error) {
+      // XELA_LOADER_DEBUG=1: the result message only carries the error text;
+      // the stack is what locates a stripped-module failure
+      if (process.env.XELA_LOADER_DEBUG && error instanceof Error) {
+        process.stderr.write(`[print] execution error: ${error.stack}\n`)
+      }
       // Emit error result message before shutting down
       // Write directly to structuredIO to ensure immediate delivery
       try {

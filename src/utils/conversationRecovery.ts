@@ -64,7 +64,7 @@ const LEGACY_BRIEF_TOOL_NAME: string | null =
         require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
       ).LEGACY_BRIEF_TOOL_NAME
     : null
-const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
+const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
   ? (
       require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')
     ).SEND_USER_FILE_TOOL_NAME

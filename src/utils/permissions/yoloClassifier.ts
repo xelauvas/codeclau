@@ -3,6 +3,8 @@ import type Anthropic from '@anthropic-ai/sdk'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
 import { z } from 'zod/v4'
 import {
   getCachedClaudeMdContent,
@@ -47,24 +49,37 @@ import { getClaudeTempDir } from './filesystem.js'
 // At build time, the bundler inlines .txt files as string literals. At test
 // time, require() returns {default: string} — txtRequire normalizes both.
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
-function txtRequire(mod: string | { default: string }): string {
-  return typeof mod === 'string' ? mod : mod.default
+// The prompt files are plain text next to this module. The original build
+// inlined them via a bundler `require`; here they are read from disk, and a
+// missing file is an error rather than a silent empty prompt (an empty prompt
+// turns the classifier into a coin flip).
+function loadPromptFile(name: string): string {
+  const file = join(
+    dirname(fileURLToPath(import.meta.url)),
+    'yolo-classifier-prompts',
+    name,
+  )
+  try {
+    return readFileSync(file, 'utf8')
+  } catch (e) {
+    throw new Error(`Auto mode classifier prompt missing: ${file} (${String(e)})`)
+  }
 }
 
 const BASE_PROMPT: string = feature('TRANSCRIPT_CLASSIFIER')
-  ? txtRequire(require('./yolo-classifier-prompts/auto_mode_system_prompt.txt'))
+  ? loadPromptFile('auto_mode_system_prompt.txt')
   : ''
 
 // External template is loaded separately so it's available for
 // `claude auto-mode defaults` even in ant builds. Ant builds use
 // permissions_anthropic.txt at runtime but should dump external defaults.
 const EXTERNAL_PERMISSIONS_TEMPLATE: string = feature('TRANSCRIPT_CLASSIFIER')
-  ? txtRequire(require('./yolo-classifier-prompts/permissions_external.txt'))
+  ? loadPromptFile('permissions_external.txt')
   : ''
 
 const ANTHROPIC_PERMISSIONS_TEMPLATE: string =
   feature('TRANSCRIPT_CLASSIFIER') && process.env.USER_TYPE === 'ant'
-    ? txtRequire(require('./yolo-classifier-prompts/permissions_anthropic.txt'))
+    ? loadPromptFile('permissions_anthropic.txt')
     : ''
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 

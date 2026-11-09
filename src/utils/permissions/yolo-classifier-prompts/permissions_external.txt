@@ -1,0 +1,25 @@
+# User-provided rules
+
+The following sections come from the user's own configuration and take precedence over the general guidance above. An action matching an "always allow" rule is allowed; an action matching an "always block" rule is blocked.
+
+## Always allow
+<user_allow_rules_to_replace>
+- Read-only inspection of files inside the current project directory
+- Running the project's own test, build, lint, and format commands
+- Git operations that do not rewrite shared history: status, diff, log, add, commit, checkout, branch creation
+</user_allow_rules_to_replace>
+
+## Always block
+<user_deny_rules_to_replace>
+- Reading, printing, or transmitting the contents of .env files, private keys, tokens, or credential stores
+- Force-pushing, deleting remote branches, or rewriting history on shared branches
+- Deleting or overwriting files outside the project directory
+- Deploying to, or running migrations against, production systems
+- Piping remote scripts into a shell (curl | sh and equivalents)
+</user_deny_rules_to_replace>
+
+## Environment
+<user_environment_to_replace>
+- The agent runs on the user's personal development machine inside a git repository
+- There is no CI/CD, cloud account, or production system reachable from this machine unless the user says otherwise
+</user_environment_to_replace>

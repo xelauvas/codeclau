@@ -63,6 +63,12 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
  * 4. Settings (from user's saved settings)
  */
 export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
+  // OpenAI-compatible backend: the configured model wins over any Claude model
+  // left in settings, so the UI shows what actually answers
+  if (process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_MODEL || 'gpt-4o'
+  }
+
   let specifiedModel: ModelSetting | undefined
 
   const modelOverride = getMainLoopModelOverride()

@@ -52,6 +52,15 @@ export function getContextWindowForModel(
   model: string,
   betas?: string[],
 ): number {
+  // OpenAI-compatible backends: the real window comes from the server (a local
+  // llama.cpp may run 32k-128k), so auto-compact and the context meter follow it
+  // instead of the Claude default
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_CONTEXT_WINDOW) {
+    const override = parseInt(process.env.OPENAI_CONTEXT_WINDOW, 10)
+    if (!isNaN(override) && override > 0) {
+      return override
+    }
+  }
   // Allow override via environment variable (ant-only)
   // This takes precedence over all other context window resolution, including 1M detection,
   // so users can cap the effective context window for local decisions (auto-compact, etc.)

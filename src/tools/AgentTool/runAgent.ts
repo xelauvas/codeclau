@@ -756,6 +756,17 @@ export async function* runAgent({
       maxTurns: maxTurns ?? agentDefinition.maxTurns,
     })) {
       onQueryProgress?.()
+      if (process.env.XELA_LOADER_DEBUG) {
+        const kinds =
+          message.type === 'assistant' || message.type === 'user'
+            ? (Array.isArray(message.message.content)
+                ? message.message.content.map(b => b.type).join(',')
+                : typeof message.message.content)
+            : message.type === 'stream_event'
+              ? message.event.type
+              : ''
+        process.stderr.write(`[runAgent ${agentDefinition.agentType}] ${message.type} ${kinds}\n`)
+      }
       // Forward subagent API request starts to parent's metrics display
       // so TTFT/OTPS update during subagent execution.
       if (

@@ -1214,7 +1214,7 @@ async function* queryModel(
     cachedMCEnabled = featureEnabled && modelSupported
     const config = getCachedMCConfig()
     logForDebugging(
-      `Cached MC gate: enabled=${featureEnabled} modelSupported=${modelSupported} model=${options.model} supportedModels=${jsonStringify(config.supportedModels)}`,
+      `Cached MC gate: enabled=${featureEnabled} modelSupported=${modelSupported} model=${options.model} supportedModels=${jsonStringify(config?.supportedModels)}`,
     )
   }
 
@@ -1951,7 +1951,9 @@ async function* queryModel(
       let totalStallTime = 0
       let stallCount = 0
 
+      let __xelaParts = 0
       for await (const part of stream) {
+        __xelaParts++
         resetStreamIdleTimer()
         const now = Date.now()
 
@@ -2315,6 +2317,9 @@ async function* queryModel(
           event: part,
           ...(part.type === 'message_start' ? { ttftMs } : undefined),
         }
+      }
+      if (process.env.XELA_LOADER_DEBUG) {
+        process.stderr.write(`[claude.ts] stream loop exited: ${__xelaParts} parts, source=${options.querySource}, newMessages=${newMessages.length}\n`)
       }
       // Clear the idle timeout watchdog now that the stream loop has exited
       clearStreamIdleTimers()

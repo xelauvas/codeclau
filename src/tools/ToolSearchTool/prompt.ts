@@ -12,7 +12,7 @@ const BRIEF_TOOL_NAME: string | null =
         require('../BriefTool/prompt.js') as typeof import('../BriefTool/prompt.js')
       ).BRIEF_TOOL_NAME
     : null
-const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
+const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
   ? (
       require('../SendUserFileTool/prompt.js') as typeof import('../SendUserFileTool/prompt.js')
     ).SEND_USER_FILE_TOOL_NAME

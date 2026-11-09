@@ -6,7 +6,9 @@ register('./loader.js', import.meta.url);
 // Provide a global `require` for CJS-style requires in ESM context
 // (Bun supports this but Node ESM doesn't)
 import { dirname, resolve, extname } from 'node:path';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { transformSync } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import Module from 'node:module';
@@ -92,9 +94,20 @@ Module._resolveFilename = function(request, parent, isMain, options) {
       }
     }
     // Last resort: return CJS stub for missing modules
-    // (DCE'd feature-gated code)
+    // (DCE'd feature-gated code). One tiny file per specifier so the stub can
+    // report which module was missing (XELA_LOADER_DEBUG=1).
     const CJS_STUB_PATH = resolve(dirname(fileURLToPath(import.meta.url)), 'cjs_stub.cjs');
-    return CJS_STUB_PATH;
+    try {
+      const dir = resolve(tmpdir(), 'xela-cjs-stubs');
+      mkdirSync(dir, { recursive: true });
+      const file = resolve(dir, createHash('sha1').update(request).digest('hex').slice(0, 16) + '.cjs');
+      if (!existsSync(file)) {
+        writeFileSync(file, `module.exports = require(${JSON.stringify(CJS_STUB_PATH)}).__makeStub(${JSON.stringify(request)});\n`);
+      }
+      return file;
+    } catch {
+      return CJS_STUB_PATH;
+    }
   }
 };
 

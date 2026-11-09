@@ -83,11 +83,7 @@ const voiceCommand = feature('VOICE_MODE')
 const forceSnip = feature('HISTORY_SNIP')
   ? require('./commands/force-snip.js').default
   : null
-const workflowsCmd = feature('WORKFLOW_SCRIPTS')
-  ? (
-      require('./commands/workflows/index.js') as typeof import('./commands/workflows/index.js')
-    ).default
-  : null
+const workflowsCmd = feature('WORKFLOW_SCRIPTS') ? workflowsCommandImpl : null
 const webCmd = feature('CCR_REMOTE_SETUP')
   ? (
       require('./commands/remote-setup/index.js') as typeof import('./commands/remote-setup/index.js')
@@ -159,6 +155,8 @@ import {
   getDynamicSkills,
 } from './skills/loadSkillsDir.js'
 import { getBundledSkills } from './skills/bundledSkills.js'
+import workflowsCommandImpl from './commands/workflows/index.js'
+import { getWorkflowCommands as getWorkflowCommandsImpl } from './tools/WorkflowTool/createWorkflowCommand.js'
 import { getBuiltinPluginSkillCommands } from './plugins/builtinPlugins.js'
 import {
   getPluginCommands,
@@ -399,9 +397,7 @@ async function getSkills(cwd: string): Promise<{
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const getWorkflowCommands = feature('WORKFLOW_SCRIPTS')
-  ? (
-      require('./tools/WorkflowTool/createWorkflowCommand.js') as typeof import('./tools/WorkflowTool/createWorkflowCommand.js')
-    ).getWorkflowCommands
+  ? getWorkflowCommandsImpl
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

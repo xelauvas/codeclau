@@ -50,13 +50,27 @@ function logOperation(operation: QueueOperation, content?: string): void {
 // Within the same priority, commands are processed FIFO.
 // ============================================================================
 
-const commandQueue: QueuedCommand[] = []
-/** Frozen snapshot — recreated on every mutation for useSyncExternalStore. */
-let snapshot: readonly QueuedCommand[] = Object.freeze([])
-const queueChanged = createSignal()
+// Process-wide state. Feature-gated modules are loaded through the CJS
+// `require` shim and get their own copy of this module; without a shared
+// store they would enqueue into a queue nobody drains.
+type QueueGlobals = {
+  commandQueue: QueuedCommand[]
+  /** Frozen snapshot — recreated on every mutation for useSyncExternalStore. */
+  snapshot: readonly QueuedCommand[]
+  queueChanged: ReturnType<typeof createSignal>
+}
+const queueGlobals: QueueGlobals = ((
+  globalThis as unknown as { __xelaMessageQueue?: QueueGlobals }
+).__xelaMessageQueue ??= {
+  commandQueue: [],
+  snapshot: Object.freeze([]),
+  queueChanged: createSignal(),
+})
+const commandQueue: QueuedCommand[] = queueGlobals.commandQueue
+const queueChanged = queueGlobals.queueChanged
 
 function notifySubscribers(): void {
-  snapshot = Object.freeze([...commandQueue])
+  queueGlobals.snapshot = Object.freeze([...commandQueue])
   queueChanged.emit()
 }
 
@@ -76,7 +90,7 @@ export const subscribeToCommandQueue = queueChanged.subscribe
  * Returns a frozen array that only changes reference on mutation.
  */
 export function getCommandQueueSnapshot(): readonly QueuedCommand[] {
-  return snapshot
+  return queueGlobals.snapshot
 }
 
 // ============================================================================
@@ -328,12 +342,12 @@ export function clearCommandQueue(): void {
 }
 
 /**
- * Clear all commands and reset snapshot.
+ * Clear all commands and reset queueGlobals.snapshot.
  * Used for test cleanup.
  */
 export function resetCommandQueue(): void {
   commandQueue.length = 0
-  snapshot = Object.freeze([])
+  queueGlobals.snapshot = Object.freeze([])
 }
 
 // ============================================================================
@@ -492,7 +506,7 @@ export const subscribeToPendingNotifications = subscribeToCommandQueue
 
 /** @deprecated Use getCommandQueueSnapshot */
 export function getPendingNotificationsSnapshot(): readonly QueuedCommand[] {
-  return snapshot
+  return queueGlobals.snapshot
 }
 
 /** @deprecated Use hasCommandsInQueue */

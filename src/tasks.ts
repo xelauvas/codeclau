@@ -3,15 +3,30 @@ import type { Task, TaskType } from './Task.js'
 import { DreamTask } from './tasks/DreamTask/DreamTask.js'
 import { LocalAgentTask } from './tasks/LocalAgentTask/LocalAgentTask.js'
 import { LocalShellTask } from './tasks/LocalShellTask/LocalShellTask.js'
+import { MonitorMcpTask as MonitorMcpTaskImpl } from './tasks/MonitorMcpTask/MonitorMcpTask.js'
+import { LocalWorkflowTask as LocalWorkflowTaskImpl } from './tasks/LocalWorkflowTask/LocalWorkflowTask.js'
 import { RemoteAgentTask } from './tasks/RemoteAgentTask/RemoteAgentTask.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const LocalWorkflowTask: Task | null = feature('WORKFLOW_SCRIPTS')
-  ? require('./tasks/LocalWorkflowTask/LocalWorkflowTask.js').LocalWorkflowTask
-  : null
-const MonitorMcpTask: Task | null = feature('MONITOR_TOOL')
-  ? require('./tasks/MonitorMcpTask/MonitorMcpTask.js').MonitorMcpTask
-  : null
+// Resolved lazily: these task modules import the task framework, which
+// imports this file. Reading the export at top level during a CJS require
+// hits the temporal dead zone ("Cannot access before initialization").
+let LocalWorkflowTask: Task | null | undefined
+let MonitorMcpTask: Task | null | undefined
+function getOptionalTasks(): Task[] {
+  if (LocalWorkflowTask === undefined) {
+    LocalWorkflowTask = feature('WORKFLOW_SCRIPTS') ? LocalWorkflowTaskImpl : null
+  }
+  if (MonitorMcpTask === undefined) {
+    // Static import: the WebSocket monitor shares the task registry and
+    // notification queue with the app, so it must not be a CJS copy
+    MonitorMcpTask = feature('MONITOR_TOOL') ? MonitorMcpTaskImpl : null
+  }
+  const tasks: Task[] = []
+  if (LocalWorkflowTask) tasks.push(LocalWorkflowTask)
+  if (MonitorMcpTask) tasks.push(MonitorMcpTask)
+  return tasks
+}
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /**
@@ -26,8 +41,7 @@ export function getAllTasks(): Task[] {
     RemoteAgentTask,
     DreamTask,
   ]
-  if (LocalWorkflowTask) tasks.push(LocalWorkflowTask)
-  if (MonitorMcpTask) tasks.push(MonitorMcpTask)
+  tasks.push(...getOptionalTasks())
   return tasks
 }
 
