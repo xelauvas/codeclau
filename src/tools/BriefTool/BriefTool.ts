@@ -91,6 +91,8 @@ export function isBriefEntitled(): boolean {
   return feature('KAIROS') || feature('KAIROS_BRIEF')
     ? getKairosActive() ||
         isEnvTruthy(process.env.CLAUDE_CODE_BRIEF) ||
+        // Local/OpenAI-compatible backends: nobody to ask for entitlement
+        !!process.env.OPENAI_API_KEY ||
         getFeatureValue_CACHED_WITH_REFRESH(
           'tengu_kairos_brief',
           false,

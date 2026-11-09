@@ -61,6 +61,10 @@ const DEFAULT_FEATURES = [
   'DUMP_SYSTEM_PROMPT',
   'NATIVE_CLIPBOARD_IMAGE',
   'MCP_RICH_OUTPUT',
+  // Assistant mode (xela-local --assistant, CLAUDE_CODE_ASSISTANT=1 or
+  // .claude/agents/assistant.md) and brief mode (/brief, SendUserMessage tool)
+  'KAIROS',
+  'KAIROS_BRIEF',
 ];
 
 const ENABLED_FEATURES = new Set(

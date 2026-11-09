@@ -39,7 +39,7 @@ export const call: LocalCommandCall = async args => {
         // activateProactive schedules the first tick; useProactive (REPL) or
         // print.ts (headless) delivers it.
         activateProactive('command')
-        return { type: 'text', value: `Proactive mode on. The model gets a <tick> shortly, then every ${Math.round(PROACTIVE_TICK_INTERVAL_MS / 60_000)} min or whenever its Sleep ends. \`/proactive off\` stops it.` }
+        return { type: 'text', value: `Proactive mode on. The model gets a tick prompt shortly, then every ${Math.round(PROACTIVE_TICK_INTERVAL_MS / 60_000)} min or whenever its Sleep ends. \`/proactive off\` stops it.` }
       }
       if (isProactivePaused()) resumeProactive()
       return { type: 'text', value: status() }

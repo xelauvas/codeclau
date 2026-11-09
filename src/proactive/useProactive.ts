@@ -1,4 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { logForDebugging } from '../utils/debug.js'
 import {
   getNextTickAt,
   getTickPrompt,
@@ -53,18 +54,24 @@ export function useProactive({
     if (!active || paused || nextTickAt === null) return
     const fire = (): void => {
       const l = latest.current
-      if (!isProactiveActive() || isProactivePaused()) return
+      if (!isProactiveActive() || isProactivePaused()) {
+        logForDebugging('[proactive] tick skipped: inactive or paused')
+        return
+      }
       if (l.hasActiveLocalJsxUI || l.isInPlanMode) {
         // Try again shortly; the user is in a dialog or planning.
+        logForDebugging('[proactive] tick deferred: dialog open or plan mode')
         scheduleNextTick(15_000)
         return
       }
-      recordTick()
+      const n = recordTick()
       const prompt = getTickPrompt()
+      logForDebugging(`[proactive] tick ${n} ${l.isLoading || l.queuedCommandsLength > 0 ? 'queued' : 'submitted'}`)
       if (l.isLoading || l.queuedCommandsLength > 0) l.onQueueTick(prompt)
       else l.onSubmitTick(prompt)
     }
     const delay = Math.max(0, nextTickAt - Date.now())
+    logForDebugging(`[proactive] next tick in ${Math.round(delay / 1000)}s`)
     const timer = setTimeout(fire, delay)
     return () => clearTimeout(timer)
   }, [active, paused, nextTickAt])

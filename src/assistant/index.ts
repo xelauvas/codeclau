@@ -53,6 +53,13 @@ export async function initializeAssistantTeam(): Promise<AssistantTeamContext> {
   return { teamName: ASSISTANT_TEAM_NAME, definitionPath: existsSync(path) ? path : null }
 }
 
+/** How assistant mode got turned on, for diagnostics. */
+export function getAssistantActivationPath(): string {
+  if (state.forced) return 'flag'
+  if (isEnvTruthy(process.env.CLAUDE_CODE_ASSISTANT)) return 'env'
+  return existsSync(assistantDefinitionPath()) ? 'agent_file' : 'none'
+}
+
 export function isAssistantTeamInitialized(): boolean {
   return state.teamInitialized
 }

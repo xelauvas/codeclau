@@ -3077,7 +3077,7 @@ export function REPL({
       }
 
       // Atomically: clear initial message, set permission mode and rules, and store plan for verification
-      const shouldStorePlanForVerification = initialMsg.message.planContent && "external" === 'ant' && isEnvTruthy(undefined);
+      const shouldStorePlanForVerification = initialMsg.message.planContent && process.env.CLAUDE_CODE_VERIFY_PLAN === 'true';
       setAppState(prev => {
         // Build and apply permission updates (mode + allowedPrompts rules)
         let updatedToolPermissionContext = initialMsg.mode ? applyPermissionUpdates(prev.toolPermissionContext, buildPermissionUpdates(initialMsg.mode, initialMsg.allowedPrompts)) : prev.toolPermissionContext;
@@ -4088,10 +4088,15 @@ export function REPL({
       onSubmitTask: handleIncomingPrompt
     });
 
-    // Loop mode: auto-tick when enabled (via /job command)
+  }
+
+  // Proactive mode: auto-tick when enabled (/proactive, --proactive). Upstream
+  // this sat inside the ant-only block above; the tick driver is needed in
+  // every build where PROACTIVE is on.
+  if (feature('PROACTIVE') || feature('KAIROS')) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    // biome-ignore lint/correctness/useHookAtTopLevel: conditional for dead code elimination in external builds
-    useProactive?.({
+    // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
+    useProactive!({
       // Suppress ticks while an initial message is pending — the initial
       // message will be processed asynchronously and a premature tick would
       // race with it, causing concurrent-query enqueue of expanded skill text.

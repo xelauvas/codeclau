@@ -27,7 +27,9 @@ const briefConfigSchema = lazySchema(() =>
 type BriefConfig = z.infer<ReturnType<typeof briefConfigSchema>>
 
 const DEFAULT_BRIEF_CONFIG: BriefConfig = {
-  enable_slash_command: false,
+  // Local builds have no remote config to turn this on; the command is the
+  // only way for a user to opt into brief mode outside assistant mode.
+  enable_slash_command: true,
 }
 
 // No TTL — this gate controls slash-command *visibility*, not a kill switch.
