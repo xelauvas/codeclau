@@ -12,7 +12,8 @@
   "keywords": ["ai", "coding", "assistant", "cli", "openrouter", "groq", "ollama", "deepseek", "xela"],
   "bin": {
     "xela": "./bin/xela.js",
-    "xela-local": "./local/xela-local.sh"
+    "xela-local": "./local/xela-local.sh",
+    "xela-tunnel": "./local/start-tunnel.sh"
   },
   "files": [
     "bin/",

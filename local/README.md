@@ -69,33 +69,44 @@ The server can be started by hand with `start-qwen.sh` (same directory as
   and the other Claude Code features are enabled by default; see
   `src/_shims/bun_bundle.js` for the feature list (`XELA_FEATURES_DISABLE=NAME` to turn one off).
 
-## Using the model from another computer
+## Using Xela from any computer (like Claude Code or Codex)
 
-The model server can stay on the GPU machine; Xela on a laptop talks to it over
-the network.
+The model server stays on the GPU machine; Xela on any other computer or
+network talks to it over the internet. Install once, enter the server address
+once, then just run `xela-local`.
 
-On the GPU machine, start the server with a key and keep it running:
+**On the GPU machine**, start the server with a key and expose it through a
+tunnel (no router or firewall changes needed; the key is the only protection,
+so keep it secret):
 
 ```bash
-LLAMA_API_KEY=choose-a-secret CTX=65536 start-qwen.sh      # or via xela-local once
+LLAMA_API_KEY=choose-a-secret CTX=65536 start-qwen.sh   # or let xela-local start it
+start-tunnel.sh                                          # ngrok (needs `ngrok config add-authtoken ...` once)
 ```
 
-If the server runs inside WSL, Windows must forward the port. Either enable
-mirrored networking (Windows 11: add `networkingMode=mirrored` under `[wsl2]`
-in `%UserProfile%\.wslconfig`, then `wsl --shutdown`) or, in an admin
-PowerShell, forward it by hand each time the WSL IP changes (`hostname -I` in WSL):
+`start-tunnel.sh` prints the public https URL and checks that requests without
+the key are refused. The free ngrok URL changes on every restart; claim the
+free static domain in the ngrok dashboard (Domains) and run
+`NGROK_DOMAIN=yourname.ngrok-free.app start-tunnel.sh` to keep it fixed.
+
+Same network only? Skip the tunnel and use `http://<gpu-machine-ip>:8080`. If
+the server runs inside WSL, enable mirrored networking (Windows 11: add
+`networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig`, then
+`wsl --shutdown`) and allow port 8080 in the Windows firewall:
 
 ```powershell
-netsh interface portproxy add v4tov4 listenport=8080 listenaddress=0.0.0.0 connectport=8080 connectaddress=<WSL-IP>
-netsh advfirewall firewall add rule name="llama-server 8080" dir=in action=allow protocol=TCP localport=8080
+New-NetFirewallHyperVRule -Name llama-8080 -DisplayName "llama-server 8080 (WSL)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 8080
+New-NetFirewallRule -DisplayName "llama-server 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
 ```
 
-On the other computer (only Node and the npm package are needed, no GPU, no model):
+**On any other computer** (Node 20+ and bash/curl; no GPU, no model):
 
 ```bash
 npm install -g @xelauvas/xela-cli
-XELA_SERVER_URL=http://<gpu-machine-ip>:8080 LLAMA_API_KEY=choose-a-secret xela-local
+xela-local            # first run asks: Server URL, API key → saved in ~/.xela-local/server.env
 ```
 
-Put the two variables in your shell profile to make it permanent. The launcher
-never starts a server when `XELA_SERVER_URL` points to another host.
+Afterwards `xela-local` works in any directory. `xela-local --setup` changes
+the server; `xela-local --server URL --key KEY` sets it non-interactively.
+`XELA_SERVER_URL` / `LLAMA_API_KEY` in the environment override the saved
+values. The launcher never starts a server when the address is not localhost.
