@@ -7,13 +7,23 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xelauvas/codeclau.git"
+    "url": "git+https://github.com/xelauvas/codeclau.git"
   },
-  "keywords": ["ai", "coding", "assistant", "cli", "openrouter", "groq", "ollama", "deepseek", "xela"],
+  "keywords": [
+    "ai",
+    "coding",
+    "assistant",
+    "cli",
+    "openrouter",
+    "groq",
+    "ollama",
+    "deepseek",
+    "xela"
+  ],
   "bin": {
-    "xela": "./bin/xela.js",
-    "xela-local": "./local/xela-local.sh",
-    "xela-tunnel": "./local/start-tunnel.sh"
+    "xela": "bin/xela.js",
+    "xela-local": "local/xela-local.sh",
+    "xela-tunnel": "local/start-tunnel.sh"
   },
   "files": [
     "bin/",
