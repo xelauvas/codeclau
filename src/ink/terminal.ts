@@ -175,7 +175,15 @@ export function supportsExtendedKeys(): boolean {
  *  mid-stream. WT_SESSION catches WSL-in-Windows-Terminal where platform
  *  is linux but output still routes through conhost. */
 export function hasCursorUpViewportYankBug(): boolean {
-  return process.platform === 'win32' || !!process.env.WT_SESSION
+  // Opting in keeps the upstream behaviour (no streamed text, messages shown
+  // only when the turn ends). Off by default: it hid all real-time output for
+  // WSL users in Windows Terminal, and current Windows Terminal builds do not
+  // yank the viewport on cursor-up.
+  if (process.env.CLAUDE_CODE_WT_CURSOR_WORKAROUND !== undefined) {
+    return process.env.CLAUDE_CODE_WT_CURSOR_WORKAROUND === '1' ||
+      process.env.CLAUDE_CODE_WT_CURSOR_WORKAROUND === 'true'
+  }
+  return process.platform === 'win32' && !process.env.WT_SESSION
 }
 
 // Computed once at module load — terminal capabilities don't change mid-session.
