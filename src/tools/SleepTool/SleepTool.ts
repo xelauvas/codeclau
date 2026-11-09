@@ -110,31 +110,8 @@ export const SleepTool = buildTool({
       }
     }
     const start = Date.now()
-      const interrupted = await waitFor(waitMs, abortController.signal)
-      return {
-        data: {
-          sleptMs: Date.now() - start,
-          interrupted,
-          message: interrupted
-            ? 'Sleep interrupted.'
-            : `Slept ${Math.round(waitMs / 1000)}s; the scheduled tick is now due. End your turn.`,
-        },
-      }
-    }
-    const start = Date.now()
     const ms = Math.min(seconds, MAX_SECONDS) * 1000
-    const interrupted = await new Promise<boolean>(resolve => {
-      if (abortController.signal.aborted) return resolve(true)
-      const timer = setTimeout(() => {
-        abortController.signal.removeEventListener('abort', onAbort)
-        resolve(false)
-      }, ms)
-      const onAbort = (): void => {
-        clearTimeout(timer)
-        resolve(true)
-      }
-      abortController.signal.addEventListener('abort', onAbort, { once: true })
-    })
+    const interrupted = await waitFor(ms, abortController.signal)
     const sleptMs = Date.now() - start
     return {
       data: {

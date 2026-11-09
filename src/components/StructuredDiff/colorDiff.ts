@@ -1,9 +1,11 @@
+// The fork ships the TypeScript port of color-diff (src/native-ts) instead of
+// the native color-diff-napi module.
 import {
   ColorDiff,
   ColorFile,
   getSyntaxTheme as nativeGetSyntaxTheme,
   type SyntaxTheme,
-} from 'color-diff-napi'
+} from '../../native-ts/color-diff/index.js'
 import { isEnvDefinedFalsy } from '../../utils/envUtils.js'
 
 export type ColorModuleUnavailableReason = 'env'
