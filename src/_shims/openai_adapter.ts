@@ -347,7 +347,11 @@ async function toAnthropicError(err: any): Promise<Error> {
     message = `prompt is too long: ${ctx[1]} tokens > ${ctx[2]} maximum`
   }
   debugLog({ error: message, status })
-  return new APIError(status, err?.error || {}, message, new Headers())
+  // APIError builds its .message from the body's `message` when present, so
+  // the translated text must go into the body too, or the raw provider text
+  // wins and prompt-too-long detection misses it.
+  const body = { ...(typeof err?.error === 'object' && err.error ? err.error : {}), message }
+  return new APIError(status, body, message, new Headers())
 }
 
 // ---------------------------------------------------------------------------
