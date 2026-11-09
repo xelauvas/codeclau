@@ -23,11 +23,11 @@ AUTH=()
 [ -n "${LLAMA_API_KEY:-}" ] && AUTH=(-H "Authorization: Bearer $LLAMA_API_KEY")
 
 if [ "$REMOTE" = "1" ]; then
-  if ! curl -sf "${AUTH[@]}" "$SERVER/health" >/dev/null 2>&1; then
+  if ! curl -sf --connect-timeout 5 "${AUTH[@]}" "$SERVER/health" >/dev/null 2>&1; then
     echo "Model server not reachable at $SERVER (XELA_SERVER_URL). Is it running and is the port open?" >&2
     exit 1
   fi
-elif ! curl -sf "${AUTH[@]}" "$SERVER/health" >/dev/null 2>&1; then
+elif ! curl -sf --connect-timeout 5 "${AUTH[@]}" "$SERVER/health" >/dev/null 2>&1; then
   echo "Starting the local model server (log: $LOG)..." >&2
   mkdir -p "$(dirname "$LOG")"
   nohup "$HERE/start-qwen.sh" > "$LOG" 2>&1 &
@@ -60,7 +60,7 @@ export OPENAI_API_KEY="${OPENAI_API_KEY:-${LLAMA_API_KEY:-local}}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$SERVER/v1}"
 export OPENAI_MODEL="${OPENAI_MODEL:-qwen3.6-27b}"
 
-CTX=$(curl -s "${AUTH[@]}" "$SERVER/props" | python3 -c "import sys,json;print(json.load(sys.stdin)['default_generation_settings']['n_ctx'])" 2>/dev/null)
+CTX=$(curl -s --connect-timeout 5 "${AUTH[@]}" "$SERVER/props" | python3 -c "import sys,json;print(json.load(sys.stdin)['default_generation_settings']['n_ctx'])" 2>/dev/null)
 CTX="${CTX:-65536}"
 export OPENAI_CONTEXT_WINDOW="$CTX"
 MAX_OUT=$(( CTX / 4 )); [ "$MAX_OUT" -lt 16384 ] && MAX_OUT=16384
